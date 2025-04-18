@@ -54,10 +54,10 @@ const renderGraph = (data) => {
     });
 };
 
-// Save uploaded JSON data and series name in local storage
-const saveFileToLocalStorage = (fileName, data, seriesName) => {
+// Save uploaded JSON data, series name, and color in local storage
+const saveFileToLocalStorage = (fileName, data, seriesName, color) => {
     const storedFiles = JSON.parse(localStorage.getItem('uploadedFiles')) || {};
-    storedFiles[fileName] = { data, seriesName };
+    storedFiles[fileName] = { data, seriesName, color };
     localStorage.setItem('uploadedFiles', JSON.stringify(storedFiles));
 };
 
@@ -82,13 +82,14 @@ const renderFileList = () => {
 
     const storedFiles = loadFilesFromLocalStorage();
     Object.keys(storedFiles).forEach(fileName => {
-        const { seriesName } = storedFiles[fileName];
+        const { seriesName, color } = storedFiles[fileName];
 
         const listItem = $(`
             <div class="list-group-item d-flex align-items-center">
                 <input type="checkbox" class="form-check-input me-2" id="${fileName}" value="${fileName}" checked>
                 <span class="me-2">${fileName}</span>
                 <input type="text" class="form-control me-2" value="${seriesName || fileName}" placeholder="Series Name">
+                <input type="color" class="form-control-color me-2" value="${color || '#000000'}">
                 <button class="btn btn-danger btn-sm">🗑️</button>
             </div>
         `);
@@ -103,6 +104,13 @@ const renderFileList = () => {
             updateGraph(); // Refresh the graph with the updated series name
         });
 
+        // Color picker change event
+        listItem.find('input[type="color"]').on('input', function () {
+            storedFiles[fileName].color = $(this).val();
+            localStorage.setItem('uploadedFiles', JSON.stringify(storedFiles));
+            updateGraph(); // Refresh the graph with the updated color
+        });
+
         // Trash button click event
         listItem.find('button').on('click', () => {
             deleteFileFromLocalStorage(fileName);
@@ -112,7 +120,21 @@ const renderFileList = () => {
     });
 };
 
-// Update the graph based on selected checkboxes and tick duration
+// Save the checkbox states in local storage
+const saveCheckboxStates = () => {
+    const checkboxStates = {};
+    $('#file-list input[type="checkbox"]').each(function () {
+        checkboxStates[$(this).val()] = $(this).is(':checked');
+    });
+    localStorage.setItem('checkboxStates', JSON.stringify(checkboxStates));
+};
+
+// Load the checkbox states from local storage
+const loadCheckboxStates = () => {
+    return JSON.parse(localStorage.getItem('checkboxStates')) || {};
+};
+
+// Update the graph based on selected checkboxe, and date range
 const updateGraph = () => {
     const storedFiles = loadFilesFromLocalStorage();
     const selectedFiles = $('#file-list input[type="checkbox"]:checked').map(function () {
@@ -122,7 +144,7 @@ const updateGraph = () => {
     // Collect all unique timestamps (timeUTC) from the selected files
     const allLabels = new Set();
     const datasets = selectedFiles.map(fileName => {
-        const data = storedFiles[fileName].data;
+        const { data, seriesName, color } = storedFiles[fileName];
         const labels = data.map(entry => new Date(entry.timeUTC).toISOString());
         const values = data.map(entry => entry.value);
 
@@ -131,17 +153,13 @@ const updateGraph = () => {
 
         // Return the dataset with a mapping of labels to values
         return {
-            label: storedFiles[fileName].seriesName || fileName,
+            label: seriesName || fileName,
             dataMap: labels.reduce((map, label, index) => {
                 map[label] = values[index];
                 return map;
             }, {}),
-            backgroundColor: `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(
-                Math.random() * 255
-            )}, ${Math.floor(Math.random() * 255)}, 0.2)`,
-            borderColor: `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(
-                Math.random() * 255
-            )}, ${Math.floor(Math.random() * 255)}, 1)`,
+            backgroundColor: `${color}33`, // Transparent version of the color
+            borderColor: color,
             borderWidth: 1
         };
     });
@@ -149,20 +167,40 @@ const updateGraph = () => {
     // Convert the Set of labels to a sorted array
     const sortedLabels = Array.from(allLabels).sort((a, b) => new Date(a) - new Date(b));
 
-    // Align each dataset's values with the sorted labels
+    // Set default values for the date pickers
+    if (sortedLabels.length > 0) {
+        const minDate = new Date(sortedLabels[0]).toISOString().slice(0, 16); // Get the earliest date and time
+        const maxDate = new Date(sortedLabels[sortedLabels.length - 1]).toISOString().slice(0, 16); // Get the latest date and time
+
+        // Set the default values for the date pickers if they are not already set
+        if (!$('#start-date').val()) {
+            $('#start-date').val(minDate);
+        }
+        if (!$('#end-date').val()) {
+            $('#end-date').val(maxDate);
+        }
+    }
+
+    // Filter labels by date range
+    const startDate = new Date($('#start-date').val());
+    const endDate = new Date($('#end-date').val());
+    const filteredLabels = sortedLabels.filter(label => {
+        const date = new Date(label);
+        return date >= startDate && date <= endDate;
+    });
+
+    // Align each dataset's values with the filtered labels
     const alignedDatasets = datasets.map(dataset => {
-        const alignedData = sortedLabels.map(label => dataset.dataMap[label] || null);
+        const alignedData = filteredLabels.map(label => dataset.dataMap[label] || null);
         return {
             label: dataset.label,
             data: alignedData,
             backgroundColor: dataset.backgroundColor,
             borderColor: dataset.borderColor,
-            borderWidth: dataset.borderWidth
+            borderWidth: dataset.borderWidth,
+            pointRadius: $('#toggle-data-points').is(':checked') ? 3 : 0 // Toggle data point bubbles
         };
     });
-
-    // Get the selected tick duration from the dropdown
-    const tickDuration = parseInt(document.getElementById('tick-duration').value, 10);
 
     const ctx = document.getElementById('myChart').getContext('2d');
 
@@ -175,7 +213,17 @@ const updateGraph = () => {
     chart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: sortedLabels, // Use the sorted timestamps as the X-axis labels
+            labels: filteredLabels.map(label => {
+                const date = new Date(label);
+                return date.toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
+            }), // Format the X-axis labels
             datasets: alignedDatasets
         },
         options: {
@@ -185,25 +233,6 @@ const updateGraph = () => {
                     title: {
                         display: true,
                         text: 'Time (UTC)'
-                    },
-                    ticks: {
-                        callback: function (value, index, ticks) {
-                            const timestamp = new Date(sortedLabels[value]);
-                            const minutes = timestamp.getMinutes();
-                            const hours = timestamp.getHours();
-
-                            // Show labels based on the selected tick duration
-                            if ((hours * 60 + minutes) % tickDuration === 0) {
-                                return timestamp.toLocaleTimeString('en-US', {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                    hour12: false
-                                });
-                            }
-                            return ''; // Skip other labels
-                        },
-                        maxRotation: 45, // Rotate labels for better readability
-                        minRotation: 0
                     }
                 },
                 y: {
@@ -234,7 +263,7 @@ const handleAddSeries = () => {
             reader.onload = function (e) {
                 try {
                     const jsonData = JSON.parse(e.target.result);
-                    saveFileToLocalStorage(file.name, jsonData, seriesName); // Save with series name
+                    saveFileToLocalStorage(file.name, jsonData, seriesName, '#000000'); // Default color is black
                     renderFileList(); // Refresh the file list
                     updateGraph(); // Refresh the graph
                 } catch (error) {
@@ -263,9 +292,11 @@ const toggleDrawer = () => {
 // Initialize the page
 $(document).ready(() => {
     renderFileList(); // Render the list of saved files
+    updateGraph(); // Automatically load the graph on page load
 
     // Add event listeners
     $('#add-series').on('click', handleAddSeries);
-    $('#tick-duration').on('change', updateGraph);
     $('#refresh-graph').on('click', updateGraph);
+    $('#toggle-data-points').on('change', updateGraph);
+    $('#start-date, #end-date').on('change', updateGraph);
 });
