@@ -1,6 +1,18 @@
-# json-graph-webpage
+# Data Sandbox
 
-This project is a simple JavaScript webpage that takes a JSON file and graphs the data using a visualization library.
+This project is a web-based tool for visualizing JSON data as graphs. It allows users to upload JSON files, customize series names, and dynamically update the graph.
+
+## Features
+- Upload JSON files and visualize data as a graph.
+- Customize series names and save them in local storage.
+- Select tick durations for the X-axis.
+- Responsive design with a collapsible drawer for managing series.
+
+## Technologies
+- HTML, CSS, JavaScript
+- Bootstrap 5
+- jQuery
+- Chart.js
 
 ## Project Structure
 
@@ -15,11 +27,11 @@ json-graph-webpage
 └── README.md            # Project documentation
 ```
 
-## Getting Started
-
-To run this project locally, follow these steps:
-
-1. Clone the repository to your local machine.
+## How to Use
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/mattghall/data-sandbox.git
+   ```
 2. Open the `index.html` file in a web browser.
 
 ## Dependencies
