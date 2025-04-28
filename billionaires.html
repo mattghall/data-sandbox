@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon/scrooge/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon/scrooge/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon/scrooge/favicon-16x16.png">
+  <link rel="manifest" href="/favicon/scrooge/site.webmanifest">
+  <title>Billionaire Earnings</title>
+  <link rel="stylesheet" href="src/style.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+  <div class="container">
+    <!-- Page Title -->
+    <h1 class="text-center my-4">Billionaire Earnings</h1>
+
+    <!-- Stopwatch Section -->
+    <section class="pb-4 d-flex justify-content-center w-100">
+      <div class="countdown countdown-horizontal d-flex align-items-center">
+        <div class="countdown-unit text-center mx-2">
+          <span id="stopwatch-days">0</span>
+          <div class="unit-label">days</div>
+        </div>
+        <div class="countdown-unit text-center mx-2">
+          <span id="stopwatch-hours">00</span>
+          <div class="unit-label">hours</div>
+        </div>
+        <div class="countdown-unit text-center mx-2">
+          <span id="stopwatch-minutes">00</span>
+          <div class="unit-label">minutes</div>
+        </div>
+        <div class="countdown-unit text-center mx-2">
+          <span id="stopwatch-seconds">00</span>
+          <div class="unit-label">seconds</div>
+        </div>
+        <div class="countdown-unit text-center mx-2">
+          <span id="stopwatch-milliseconds">000</span>
+          <div class="unit-label">milliseconds</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Introductory Text -->
+    <div class="text-center my-4">
+      <p>Since you loaded this page, the following have earned...</p>
+    </div>
+
+    <!-- Billionaires List -->
+    <div id="billionaires-list" class="row"></div>
+
+    <!-- Load More Button -->
+    <div class="text-center my-4">
+      <button id="load-more" class="btn btn-primary">Load More</button>
+      <button id="addCustomButton" class="btn btn-success">
+        Add Custom
+      </button>
+    </div>
+
+    <!-- Modal for Adding/Editing Custom Entries -->
+    <div class="modal fade" id="editMedianAmericanModal" tabindex="-1" aria-labelledby="editMedianAmericanModalLabel"
+      aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="editMedianAmericanModalLabel">Add Custom Entry</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="medianAmericanForm">
+              <div class="mb-3">
+                <label for="customName" class="form-label">Name</label>
+                <input type="text" class="form-control" id="customName" value="Me">
+              </div>
+              <div class="mb-3">
+                <label for="hourlyRate" class="form-label">Hourly Rate</label>
+                <input type="text" class="form-control" id="hourlyRate" placeholder="Enter hourly rate">
+              </div>
+              <div class="mb-3">
+                <label for="annualSalary" class="form-label">Annual Salary</label>
+                <input type="text" class="form-control" id="annualSalary" placeholder="Enter annual salary">
+              </div>
+              <div class="mb-3">
+                <label for="earningsPerSecond" class="form-label">Earnings Per Second</label>
+                <input type="text" class="form-control" id="earningsPerSecond" placeholder="Earnings per second">
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" id="saveCustom">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <!-- Footer -->
+  <footer class="text-center mt-4 small">
+    <p>Data from <a href="https://www.forbes.com/billionaires/" target="_blank">Forbes Billionaires</a>.
+      Calculations determines avg earnings per second as (net worth) / (age - 18)</p>
+    <p>Created by <a href="mattghall.com">Matt Hall</a></p>
+  </footer>
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+  <script src="src/billionaire.js"></script>
+  <script>
+    $(document).ready(() => {
+      feather.replace(); // Initialize Feather icons
+    });
+  </script>
+</body>
+
+</html>

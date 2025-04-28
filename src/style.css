@@ -87,3 +87,89 @@ footer {
     border: none;
     cursor: pointer;
 }
+
+
+
+/* Billionares shit */
+
+.billionaire-card {
+    background: #fff;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+  
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+  }
+  
+  .rank {
+    font-size: 18px;
+    font-weight: bold;
+    margin-right: 10px;
+    color: #555;
+  }
+  
+  .billionaire-card img {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    margin-right: 10px;
+  }
+  
+  .billionaire-info {
+    flex: 1;
+  }
+  
+  .billionaire-info h2 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+  }
+  
+  .billionaire-info p {
+    margin: 5px 0;
+    font-size: 14px;
+    color: #666;
+  }
+  
+  .details-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #007bff;
+    font-size: 18px;
+  }
+  
+  .details {
+    display: none;
+    padding: 10px;
+    background: #f9f9f9;
+    border-top: 1px solid #ddd;
+    font-size: 14px;
+    color: #555;
+  }
+
+  /* Default font size for medium or larger screens */
+.countdown-unit span {
+    font-size: 3rem;
+  }
+  
+  /* Adjust font size for small screens */
+  @media (max-width: 768px) {
+    .countdown-unit span {
+      font-size: 2rem;
+    }
+  }
+
+  .earnings {
+    font-family: monospace;
+    color: red
+  }
+
+
+  
