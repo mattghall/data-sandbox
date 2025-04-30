@@ -50,34 +50,16 @@ const handleAddSeries = () => {
             reader.onload = function (e) {
                 try {
                     const jsonData = JSON.parse(e.target.result);
-                    if (!Array.isArray(jsonData) || jsonData.length === 0) {
-                        alert('Invalid JSON file. Please upload a valid JSON array.');
-                        return;
-                    }
-
-                    const fileSize = new Blob([JSON.stringify(jsonData)]).size;
-
-                    // Store the file data in memory
-                    uploadedFiles[file.name] = {
-                        data: jsonData,
-                        color: `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`, // Random color
-                        name: file.name,
-                        saveToLocalStorage: fileSize <= MAX_LOCAL_STORAGE_SIZE // Flag for saving
-                    };
-
-                    // Show the key selection modal
-                    populateKeySelectionModal(file.name, jsonData[0]);
-
-                    // Show a message if the file is too large
-                    if (fileSize > MAX_LOCAL_STORAGE_SIZE) {
-                        $('#largeFileWarning').text(
-                            'This file is too large to be saved. It will only be rendered on the graph.'
-                        ).show();
+                    if (Array.isArray(jsonData) && jsonData.length !== 0) {
+                        addArrayOfJsonSeries(jsonData, file);
+                    } else if (Object.keys(jsonData).length > 0) {
+                        // If the JSON is an object, convert it to an array
+                        const transformedData = transformData(jsonData);
+                        addArrayOfJsonSeries(transformedData, file);
                     } else {
-                        $('#largeFileWarning').hide();
+                        alert('Invalid JSON format. Please upload a valid JSON file.');
                     }
 
-                    $('#keySelectionModal').modal('show');
                 } catch (error) {
                     alert('Invalid JSON file. Please upload a valid JSON file.');
                 }
@@ -86,6 +68,60 @@ const handleAddSeries = () => {
         }
     });
     fileInput.click(); // Trigger the file input dialog
+};
+
+const addArrayOfJsonSeries = (jsonData, file) => {
+    const fileSize = new Blob([JSON.stringify(jsonData)]).size;
+
+    // Store the file data in memory
+    uploadedFiles[file.name] = {
+        data: jsonData,
+        color: `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`, // Random color
+        name: file.name,
+        saveToLocalStorage: fileSize <= MAX_LOCAL_STORAGE_SIZE // Flag for saving
+    };
+
+    // Show the key selection modal
+    populateKeySelectionModal(file.name, jsonData[0]);
+
+    // Show a message if the file is too large
+    if (fileSize > MAX_LOCAL_STORAGE_SIZE) {
+        $('#largeFileWarning').text(
+            'This file is too large to be saved. It will only be rendered on the graph.'
+        ).show();
+    } else {
+        $('#largeFileWarning').hide();
+    }
+
+    $('#keySelectionModal').modal('show');
+}
+
+// Function to transform the data into the standard format
+const transformData = (data) => {
+    const keys = Object.keys(data);
+    const timestamps = data[keys[0]].map(entry => entry[0]); // Extract timestamps from the first key
+    const transformed = timestamps.map((timestamp, index) => {
+        const transformedEntry = { timestamp: new Date(timestamp).toISOString() };
+
+        keys.forEach(key => {
+            if (Array.isArray(data[key][index])) {
+                // Handle standard time/value pairs, check for null values
+                const value = data[key][index][1];
+                transformedEntry[key] = value !== null ? value.toString() : null;
+            } else if (typeof data[key][index] === 'object' && data[key][index]?.stats) {
+                // Handle "stats" property as a time/value pair array, check for null values
+                const statsEntry = data[key][index].stats[index];
+                if (statsEntry && statsEntry[1] !== null) {
+                    transformedEntry[`stats`] = statsEntry[1].toString();
+                } else {
+                    transformedEntry[`stats`] = null;
+                }
+            }
+        });
+
+        return transformedEntry;
+    });
+    return transformed;
 };
 
 // Populate the key selection modal
