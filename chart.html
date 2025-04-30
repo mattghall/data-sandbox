@@ -18,9 +18,9 @@
     <div class="container-fluid">
         <div class="row">
             <!-- Drawer -->
-            <div class="col-md-3 bg-light border-end p-3" id="drawer">
+            <div class="col-md-5 bg-light border-end p-3" id="drawer">
                 <button class="btn btn-primary w-100 mb-3" data-bs-toggle="collapse"
-                    data-bs-target="#file-list-container" aria-expanded="true" aria-controls="file-list-container">
+                    data-bs-target="#file-list-container" aria-expanded="true" aria-controls="file-list-container" id="toggle-menu">
                     Toggle Drawer
                 </button>
                 <div class="collapse show" id="file-list-container">
@@ -44,7 +44,7 @@
             </div>
 
             <!-- Graph Container -->
-            <div class="col-md-9 p-3">
+            <div class="col-md-7 p-3">
                 <h1>Graph from JSON Data</h1>
                 <canvas id="myChart"></canvas>
             </div>

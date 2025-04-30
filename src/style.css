@@ -171,5 +171,24 @@ footer {
     color: red
   }
 
+  #drawer {
+    transition: transform 0.3s ease-in-out;
+}
+
+#drawer.collapse {
+    transform: translateY(-100%); /* Slide up */
+}
+
+/* Desktop behavior (toggle left/right) */
+@media (min-width: 768px) {
+    #drawer {
+        transform: translateX(0); /* Default position */
+    }
+
+    #drawer.collapse {
+        transform: translateX(-100%); /* Slide left */
+    }
+}
+
 
   

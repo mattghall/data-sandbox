@@ -443,4 +443,15 @@ $(document).ready(() => {
     });
     // Load state on page load
     loadState();
+    $('#toggle-menu').on('click', function () {
+        if( $("#drawer").hasClass("col-md-5")) {
+            $("#drawer").removeClass("col-md-5");
+            $("#drawer").addClass("col-md-1");
+        } else {
+            $("#drawer").addClass("col-md-5");
+            $("#drawer").removeClass("col-md-1");
+
+        }
+       
+    });
 });
