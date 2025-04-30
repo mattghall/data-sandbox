@@ -1,41 +1,42 @@
 let chart; // Store the Chart.js instance globally
-let uploadedFiles = {}; // Store uploaded files and their metadata
+let uploadedSeries = {}; // Store individual series and their metadata
 
+// Load state from localStorage
 const loadState = () => {
-    const metadata = JSON.parse(localStorage.getItem('uploadedFilesMetadata')) || {};
+    const metadata = JSON.parse(localStorage.getItem('uploadedSeriesMetadata')) || {};
     for (const [key, value] of Object.entries(metadata)) {
-        uploadedFiles[key] = { ...value };
+        uploadedSeries[key] = { ...value };
 
-        // Restore the actual data for small files
+        // Restore the actual data for small series
         if (value.saveToLocalStorage) {
-            uploadedFiles[key].data = value.data;
+            uploadedSeries[key].data = value.data;
         } else {
-            uploadedFiles[key].data = []; // Large files will need to be re-uploaded
+            uploadedSeries[key].data = []; // Large series will need to be re-uploaded
         }
     }
     renderFileList();
     updateGraph();
 };
 
-// Save state to local storage
+// Save state to localStorage
 const saveState = () => {
     const metadata = {};
-    for (const [key, value] of Object.entries(uploadedFiles)) {
+    for (const [key, value] of Object.entries(uploadedSeries)) {
         metadata[key] = {
             timestampKey: value.timestampKey,
-            dataKeys: value.dataKeys,
+            dataKey: value.dataKey,
             color: value.color,
             name: value.name,
             timezone: value.timezone,
-            saveToLocalStorage: value.saveToLocalStorage // Track if the file is saved
+            saveToLocalStorage: value.saveToLocalStorage // Track if the series is saved
         };
 
-        // Save the actual data for small files
+        // Save the actual data for small series
         if (value.saveToLocalStorage) {
             metadata[key].data = value.data;
         }
     }
-    localStorage.setItem('uploadedFilesMetadata', JSON.stringify(metadata));
+    localStorage.setItem('uploadedSeriesMetadata', JSON.stringify(metadata));
 };
 
 // Handle file upload
@@ -70,19 +71,28 @@ const handleAddSeries = () => {
     fileInput.click(); // Trigger the file input dialog
 };
 
+// Handle adding series from a file
 const addArrayOfJsonSeries = (jsonData, file) => {
     const fileSize = new Blob([JSON.stringify(jsonData)]).size;
 
-    // Store the file data in memory
-    uploadedFiles[file.name] = {
-        data: jsonData,
-        color: `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`, // Random color
-        name: file.name,
-        saveToLocalStorage: fileSize <= MAX_LOCAL_STORAGE_SIZE // Flag for saving
-    };
-
-    // Show the key selection modal
-    populateKeySelectionModal(file.name, jsonData[0]);
+    // Create a series for each key in the JSON data
+    const keys = Object.keys(jsonData[0]);
+    keys.forEach((key) => {
+        if (key !== 'timestamp') {
+            const seriesId = `${file.name}-${key}`;
+            uploadedSeries[seriesId] = {
+                data: jsonData.map(entry => ({
+                    timestamp: entry.timestamp,
+                    value: entry[key]
+                })),
+                color: `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`, // Random color
+                name: `${file.name} - ${key}`,
+                timestampKey: 'timestamp',
+                dataKey: key,
+                saveToLocalStorage: fileSize <= MAX_LOCAL_STORAGE_SIZE // Flag for saving
+            };
+        }
+    });
 
     // Show a message if the file is too large
     if (fileSize > MAX_LOCAL_STORAGE_SIZE) {
@@ -93,7 +103,9 @@ const addArrayOfJsonSeries = (jsonData, file) => {
         $('#largeFileWarning').hide();
     }
 
-    $('#keySelectionModal').modal('show');
+    saveState();
+    renderFileList();
+    updateGraph();
 }
 
 // Function to transform the data into the standard format
@@ -206,18 +218,15 @@ const renderFileList = () => {
     const fileListContainer = $('#file-list');
     fileListContainer.empty();
 
-    Object.keys(uploadedFiles).forEach(fileName => {
-        const file = uploadedFiles[fileName];
+    Object.keys(uploadedSeries).forEach(seriesId => {
+        const series = uploadedSeries[seriesId];
         const listItem = $(`
             <div class="list-group-item d-flex align-items-center">
-                <input type="checkbox" class="form-check-input me-3" id="${fileName}" value="${fileName}" checked>
-                <input type="text" class="form-control me-3" value="${file.name}" placeholder="Series Name">
-                <input type="color" class="form-control-color me-3" value="${file.color}">
-                <button class="btn btn-light btn-sm me-3 timezone-btn" data-bs-toggle="tooltip" title="${file.timezone || 'UTC'}">
-                    <i data-feather="clock"></i>
-                </button>
-                ${file.saveToLocalStorage ? '' : '<span class="badge bg-warning text-dark me-3">Not Saved</span>'}
-                <button class="btn btn-danger btn-sm delete-btn" data-file="${fileName}">
+                <input type="checkbox" class="form-check-input me-3" id="${seriesId}" value="${seriesId}" checked>
+                <input type="text" class="form-control me-3" value="${series.name}" placeholder="Series Name">
+                <input type="color" class="form-control-color me-3" value="${series.color}">
+                ${series.saveToLocalStorage ? '' : '<span class="badge bg-warning text-dark me-3">Not Saved</span>'}
+                <button class="btn btn-danger btn-sm delete-btn" data-series="${seriesId}">
                     <i data-feather="trash-2"></i>
                 </button>
             </div>
@@ -228,22 +237,22 @@ const renderFileList = () => {
 
         // Name change event
         listItem.find('input[type="text"]').on('blur', function () {
-            file.name = $(this).val();
+            series.name = $(this).val();
             saveState();
             updateGraph();
         });
 
         // Color change event
         listItem.find('input[type="color"]').on('input', function () {
-            file.color = $(this).val();
+            series.color = $(this).val();
             saveState();
             updateGraph();
         });
 
         // Trash button click event
         listItem.find('.delete-btn').on('click', function () {
-            const fileName = $(this).data('file');
-            delete uploadedFiles[fileName];
+            const seriesId = $(this).data('series');
+            delete uploadedSeries[seriesId];
             saveState();
             renderFileList();
             updateGraph();
@@ -254,53 +263,38 @@ const renderFileList = () => {
 
     // Re-render Feather icons
     feather.replace();
-
-    // Initialize Bootstrap tooltips
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
-        new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-
-    updateGraph();
 };
 
 // Update the graph
 const updateGraph = () => {
-    const selectedFiles = $('#file-list input[type="checkbox"]:checked').map(function () {
+    const selectedSeries = $('#file-list input[type="checkbox"]:checked').map(function () {
         return $(this).val();
     }).get();
 
     const allLabels = new Set();
     const datasets = [];
 
-    selectedFiles.forEach(fileName => {
-        const file = uploadedFiles[fileName];
-        const { data, timestampKey, dataKeys, color, name } = file;
-
-        if (!timestampKey || !dataKeys) {
-            console.error(`Missing keys for file: ${fileName}`);
-            return;
-        }
+    selectedSeries.forEach(seriesId => {
+        const series = uploadedSeries[seriesId];
+        const { data, timestampKey, dataKey, color, name } = series;
 
         // Map the labels (timestamps)
         const labels = data.map(entry => new Date(entry[timestampKey]).toISOString());
         labels.forEach(label => allLabels.add(label));
 
-        // Create a dataset for each data key
-        dataKeys.forEach(dataKey => {
-            const values = data.map(entry => entry[dataKey]);
+        // Create a dataset for the series
+        const values = data.map(entry => entry.value);
 
-            datasets.push({
-                label: `${name} - ${dataKey}`,
-                dataMap: labels.reduce((map, label, idx) => {
-                    map[label] = values[idx];
-                    return map;
-                }, {}),
-                backgroundColor: `${color}33`,
-                borderColor: color,
-                borderWidth: 1,
-                pointRadius: 3
-            });
+        datasets.push({
+            label: name,
+            dataMap: labels.reduce((map, label, idx) => {
+                map[label] = values[idx];
+                return map;
+            }, {}),
+            backgroundColor: `${color}33`,
+            borderColor: color,
+            borderWidth: 1,
+            pointRadius: 3
         });
     });
 
