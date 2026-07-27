@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hexagon Art Builder</title>
+    <style>
+        :root {
+            --bg: #f6f8fb;
+            --panel: #ffffff;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --accent: #2563eb;
+            --empty-border-color: #d6dbe3;
+            --empty-border-opacity: 1;
+            --hex-width: 88px;
+            --hex-height: 76px;
+            --hex-overlap-x: 22px;
+            --hex-overlap-y: 38px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        h1 {
+            margin-top: 0;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            margin-top: 0;
+            color: var(--muted);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(280px, 380px) 1fr;
+            gap: 20px;
+            align-items: stretch;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .panel {
+            background: var(--panel);
+            border-radius: 12px;
+            padding: 0;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+        }
+
+        .controls {
+            display: grid;
+            gap: 14px;
+            padding: 16px;
+            overflow-y: auto;
+            min-height: 0;
+            overscroll-behavior: contain;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .color-preset {
+            width: 28px;
+            height: 28px;
+            border: 2px solid #d1d5db;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+
+        button {
+            border: 1px solid #d1d5db;
+            background: white;
+            color: var(--text);
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        button.active {
+            border-color: var(--accent);
+            background: #e8f0ff;
+        }
+
+        #usedColors {
+            display: grid;
+            gap: 8px;
+        }
+
+        .used-color {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #374151;
+        }
+
+        .swatch {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: 1px solid #d1d5db;
+        }
+
+        #hexBoard {
+            overflow: auto;
+            display: flex;
+            justify-content: flex-start;
+            align-items: flex-start;
+            background: #f7f1db;
+            border: 1px solid #ece2c2;
+            min-height: 0;
+            overscroll-behavior: contain;
+        }
+
+        #hexGrid {
+            display: block;
+            margin: 0;
+            touch-action: none;
+            flex: 0 0 auto;
+        }
+
+        .hexagon-tile {
+            cursor: default;
+            stroke: #d6dbe3;
+            stroke-width: 1;
+            stroke-dasharray: 1.5 2.5;
+            stroke-linecap: round;
+            pointer-events: all;
+        }
+
+        .hexagon-tile.draggable {
+            cursor: grab;
+        }
+
+        .hexagon-tile.drag-source {
+            opacity: 0.92;
+            filter: drop-shadow(0 4px 8px rgba(17, 24, 39, 0.35));
+        }
+
+        .hexagon-tile.drag-target {
+            stroke: #ec4899 !important;
+            stroke-opacity: 1 !important;
+            stroke-width: 2.2 !important;
+            stroke-dasharray: none !important;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .hexagon-tile.empty {
+            fill: rgba(255, 255, 255, 0.22) !important;
+            stroke: var(--empty-border-color);
+            stroke-opacity: var(--empty-border-opacity);
+        }
+
+        .small {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        h3 {
+            margin: 4px 0 0;
+        }
+
+        .color-settings-grid {
+            display: grid;
+            gap: 10px;
+        }
+
+        .setting-item {
+            display: grid;
+            gap: 6px;
+            font-size: 14px;
+            color: #374151;
+        }
+
+        .setting-item input {
+            width: 100%;
+            max-width: 180px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 14px;
+        }
+
+        .setting-item input[type="color"] {
+            max-width: 72px;
+            height: 36px;
+            padding: 2px;
+        }
+
+        .color-bank-row {
+            display: grid;
+            grid-template-columns: 42px 1fr 90px auto auto;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .color-bank-row code {
+            font-size: 12px;
+            color: #374151;
+            user-select: all;
+        }
+
+        .color-bank-row input[type="color"] {
+            width: 36px;
+            height: 30px;
+            padding: 2px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+        }
+
+        .color-bank-row input[type="number"] {
+            width: 100%;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 5px 8px;
+            font-size: 13px;
+        }
+
+        .delete-color-btn {
+            border: 1px solid #fecaca;
+            color: #b91c1c;
+            background: #fff5f5;
+            padding: 6px 8px;
+        }
+
+        .apply-color-btn {
+            border: 1px solid #bfdbfe;
+            color: #1d4ed8;
+            background: #eff6ff;
+            padding: 6px 8px;
+        }
+
+        @media (max-width: 860px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Hexagon Art Builder</h1>
+    <p class="subtitle">Use the hexagon board to build images by dragging colored hexes into new positions.</p>
+
+    <div class="layout">
+        <section class="panel controls">
+            <div class="row">
+                <button id="clearBtn" type="button">Clear all</button>
+                <button id="shuffleLocationBtn" type="button">Shuffle location</button>
+                <button id="shuffleColorsBtn" type="button">Shuffle colors</button>
+                <button id="zoomOutBtn" type="button">Zoom -</button>
+                <button id="zoomInBtn" type="button">Zoom +</button>
+                <button id="zoomResetBtn" type="button">100%</button>
+                <button id="centerViewBtn" type="button">Center view</button>
+                <span id="zoomLabel" class="small">Zoom: 100%</span>
+            </div>
+
+            <p id="countLabel"><strong>Colored hexagons:</strong> 24 / 625</p>
+            <p class="small">Tip: drag to move/swap. Use Ctrl/Cmd + mouse wheel to zoom in/out.</p>
+
+            <h3>Used color bank</h3>
+            <div id="usedColors"></div>
+            <div class="row">
+                <button id="addColorRowBtn" type="button">Add color</button>
+            </div>
+            <p id="colorBankTotal" class="small">Total Hexes: 24</p>
+
+            <h3>Board colors</h3>
+            <div class="color-settings-grid">
+                <label class="setting-item" for="boardBgInput">
+                    <span>Board background</span>
+                    <input id="boardBgInput" type="color" value="#f7f1db" />
+                </label>
+                <label class="setting-item" for="pageBgInput">
+                    <span>Page background</span>
+                    <input id="pageBgInput" type="color" value="#f6f8fb" />
+                </label>
+                <label class="setting-item" for="emptyBorderColorInput">
+                    <span>Empty border color</span>
+                    <input id="emptyBorderColorInput" type="color" value="#d6dbe3" />
+                </label>
+                <label class="setting-item" for="emptyBorderOpacityInput">
+                    <span>Empty border opacity (%)</span>
+                    <input id="emptyBorderOpacityInput" type="number" min="0" max="100" step="1" value="100" />
+                </label>
+            </div>
+
+        </section>
+
+        <section class="panel" id="hexBoard">
+            <svg id="hexGrid" xmlns="http://www.w3.org/2000/svg" aria-label="Hexagon board"></svg>
+        </section>
+    </div>
+
+    <script>
+        const COLUMNS = 25;
+        const ROWS = 25;
+        const TOTAL_HEXAGONS = COLUMNS * ROWS;
+        const SHUFFLE_REGION_COLS = 8;
+        const SHUFFLE_REGION_ROWS = 5;
+        const SVG_NS = "http://www.w3.org/2000/svg";
+        const HEX_WIDTH = 88;
+        const HEX_HEIGHT = 76;
+        const HEX_STEP_X = HEX_WIDTH * 1.4;
+        const HEX_STEP_Y = HEX_HEIGHT * 0.5;
+        const ROW_OFFSET_X = HEX_WIDTH * (2 / 3);
+        const HEX_BASE_POINTS = [
+            [HEX_WIDTH * 0.25, 0],
+            [HEX_WIDTH * 0.75, 0],
+            [HEX_WIDTH, HEX_HEIGHT * 0.5],
+            [HEX_WIDTH * 0.75, HEX_HEIGHT],
+            [HEX_WIDTH * 0.25, HEX_HEIGHT],
+            [0, HEX_HEIGHT * 0.5]
+        ];
+        const defaultColorBankEntries = [
+            { color: "#d1d5db", count: 8 },
+            { color: "#4b5563", count: 4 },
+            { color: "#9ca3af", count: 4 },
+            { color: "#ffffff", count: 4 },
+            { color: "#e9d8b7", count: 4 }
+        ];
+        let colorBankEntries = defaultColorBankEntries.map((entry) => ({ ...entry }));
+        const initialShuffle = getRandomizedDefaultCardBoard();
+        const startingColors = initialShuffle.board;
+
+        let hexColors = [...startingColors];
+        let dragSourceIndex = null;
+        let dragHoverIndex = null;
+        let dragPointerId = null;
+        let dragStartClientX = 0;
+        let dragStartClientY = 0;
+        let dragSourceTile = null;
+        let boardZoom = 1;
+        let lastLayoutMetrics = null;
+
+        const BASE_BOARD_ZOOM = 0.7;
+        const MIN_ZOOM = 0.5;
+        const MAX_ZOOM = 4;
+        const ZOOM_STEP = 0.1;
+        const BOARD_PADDING_X = 11;
+        const BOARD_PADDING_Y = 0;
+        const HEX_GAP_X = 15;
+        const HEX_GAP_Y = 2;
+        const ODD_ROW_EXTRA_OFFSET = 3;
+
+        const hexGrid = document.getElementById("hexGrid");
+        const zoomOutBtn = document.getElementById("zoomOutBtn");
+        const zoomInBtn = document.getElementById("zoomInBtn");
+        const zoomResetBtn = document.getElementById("zoomResetBtn");
+        const centerViewBtn = document.getElementById("centerViewBtn");
+        const zoomLabel = document.getElementById("zoomLabel");
+        const clearBtn = document.getElementById("clearBtn");
+        const usedColors = document.getElementById("usedColors");
+        const addColorRowBtn = document.getElementById("addColorRowBtn");
+        const colorBankTotal = document.getElementById("colorBankTotal");
+        const countLabel = document.getElementById("countLabel");
+        const shuffleLocationBtn = document.getElementById("shuffleLocationBtn");
+        const shuffleColorsBtn = document.getElementById("shuffleColorsBtn");
+        const boardBgInput = document.getElementById("boardBgInput");
+        const pageBgInput = document.getElementById("pageBgInput");
+        const emptyBorderColorInput = document.getElementById("emptyBorderColorInput");
+        const emptyBorderOpacityInput = document.getElementById("emptyBorderOpacityInput");
+        const hexBoard = document.getElementById("hexBoard");
+
+        function shuffleInPlace(items) {
+            for (let i = items.length - 1; i > 0; i -= 1) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [items[i], items[j]] = [items[j], items[i]];
+            }
+        }
+
+        function isInsideBoard(row, col) {
+            return row >= 0 && row < ROWS && col >= 0 && col < COLUMNS;
+        }
+
+        function toBoardIndex(row, col) {
+            return (row * COLUMNS) + col;
+        }
+
+        function getNeighborIndices(index) {
+            const row = Math.floor(index / COLUMNS);
+            const col = index % COLUMNS;
+            const evenRowOffsets = [[0, -1], [0, 1], [-1, -1], [-1, 0], [1, -1], [1, 0]];
+            const oddRowOffsets = [[0, -1], [0, 1], [-1, 0], [-1, 1], [1, 0], [1, 1]];
+            const offsets = row % 2 === 0 ? evenRowOffsets : oddRowOffsets;
+            const neighbors = [];
+
+            for (const [rowOffset, colOffset] of offsets) {
+                const nextRow = row + rowOffset;
+                const nextCol = col + colOffset;
+                if (isInsideBoard(nextRow, nextCol)) {
+                    neighbors.push(toBoardIndex(nextRow, nextCol));
+                }
+            }
+
+            return neighbors;
+        }
+
+        function getMiddleRegionIndices(regionCols, regionRows) {
+            const clampedCols = Math.min(COLUMNS, Math.max(1, regionCols));
+            const clampedRows = Math.min(ROWS, Math.max(1, regionRows));
+            const startCol = Math.floor((COLUMNS - clampedCols) / 2);
+            const startRow = Math.floor((ROWS - clampedRows) / 2);
+            const region = [];
+
+            for (let row = 0; row < clampedRows; row += 1) {
+                for (let col = 0; col < clampedCols; col += 1) {
+                    region.push(toBoardIndex(startRow + row, startCol + col));
+                }
+            }
+
+            return region;
+        }
+
+        function createBoardFromCards(cards, cellIndices) {
+            const board = Array.from({ length: TOTAL_HEXAGONS }, () => null);
+            const itemCount = Math.min(cards.length, cellIndices.length);
+
+            for (let i = 0; i < itemCount; i += 1) {
+                board[cellIndices[i]] = cards[i];
+            }
+
+            return board;
+        }
+
+        function getCenteredConnectedCells(targetCount) {
+            const cells = [];
+            const blockCols = Math.min(COLUMNS, Math.max(1, Math.ceil(Math.sqrt(targetCount * 1.5))));
+            const blockRows = Math.max(1, Math.ceil(targetCount / blockCols));
+            const startRow = Math.max(0, Math.floor((ROWS - blockRows) / 2));
+            const startCol = Math.max(0, Math.floor((COLUMNS - blockCols) / 2));
+
+            for (let row = 0; row < blockRows; row += 1) {
+                for (let col = 0; col < blockCols; col += 1) {
+                    if (cells.length >= targetCount) return cells;
+                    const boardRow = startRow + row;
+                    const boardCol = startCol + col;
+                    if (isInsideBoard(boardRow, boardCol)) {
+                        cells.push(toBoardIndex(boardRow, boardCol));
+                    }
+                }
+            }
+
+            return cells;
+        }
+
+        function getRandomConnectedCells(targetCount, allowedIndices = null) {
+            const allowed = allowedIndices ? new Set(allowedIndices) : null;
+            const startPool = allowedIndices && allowedIndices.length > 0
+                ? allowedIndices
+                : Array.from({ length: TOTAL_HEXAGONS }, (_, i) => i);
+            const startIndex = startPool[Math.floor(Math.random() * startPool.length)];
+            const selected = [startIndex];
+            const selectedSet = new Set(selected);
+            const frontier = new Set(
+                getNeighborIndices(startIndex).filter((neighbor) => !allowed || allowed.has(neighbor))
+            );
+
+            while (selected.length < targetCount) {
+                if (frontier.size === 0) {
+                    return startPool.slice(0, targetCount);
+                }
+
+                const frontierList = [...frontier];
+                const chosenIndex = frontierList[Math.floor(Math.random() * frontierList.length)];
+                frontier.delete(chosenIndex);
+
+                if (selectedSet.has(chosenIndex)) continue;
+
+                selected.push(chosenIndex);
+                selectedSet.add(chosenIndex);
+
+                for (const neighborIndex of getNeighborIndices(chosenIndex)) {
+                    if (!selectedSet.has(neighborIndex) && (!allowed || allowed.has(neighborIndex))) {
+                        frontier.add(neighborIndex);
+                    }
+                }
+            }
+
+            return selected;
+        }
+
+        function applyHexStyle(hex, color) {
+            const isSvgHex = hex instanceof SVGElement;
+
+            if (!color) {
+                hex.classList.add("empty");
+                hex.classList.remove("draggable");
+                if (isSvgHex) {
+                    hex.setAttribute("fill", "transparent");
+                } else {
+                    hex.style.backgroundColor = "transparent";
+                }
+                return;
+            }
+
+            hex.classList.remove("empty");
+            hex.classList.add("draggable");
+            if (isSvgHex) {
+                hex.setAttribute("fill", color);
+            } else {
+                hex.style.backgroundColor = color;
+            }
+        }
+
+        function updateColoredCountLabel() {
+            const coloredCount = hexColors.filter(Boolean).length;
+            countLabel.innerHTML = `<strong>Colored hexagons:</strong> ${coloredCount} / ${TOTAL_HEXAGONS}`;
+        }
+
+        function sanitizeColorCount(value) {
+            const parsed = Number.parseInt(value, 10);
+            if (Number.isNaN(parsed)) return 0;
+            return Math.max(0, parsed);
+        }
+
+        function normalizeHexColor(value) {
+            return (value || "").toLowerCase();
+        }
+
+        function replaceColorOnBoard(oldColor, newColor) {
+            const oldKey = normalizeHexColor(oldColor);
+            const newKey = normalizeHexColor(newColor);
+            if (!oldKey || !newKey || oldKey === newKey) return;
+
+            for (let i = 0; i < hexColors.length; i += 1) {
+                if (normalizeHexColor(hexColors[i]) === oldKey) {
+                    setHexColor(i, newKey, true);
+                }
+            }
+            updateColoredCountLabel();
+        }
+
+        function mergeDuplicateColorBankEntries() {
+            const merged = new Map();
+            for (const entry of colorBankEntries) {
+                const key = normalizeHexColor(entry.color);
+                const count = sanitizeColorCount(entry.count);
+                if (!key || count <= 0) continue;
+                merged.set(key, (merged.get(key) || 0) + count);
+            }
+
+            colorBankEntries = [...merged.entries()].map(([color, count]) => ({ color, count }));
+        }
+
+        function getConfiguredColorList() {
+            const colors = [];
+            for (const entry of colorBankEntries) {
+                const count = sanitizeColorCount(entry.count);
+                for (let i = 0; i < count; i += 1) {
+                    colors.push(normalizeHexColor(entry.color));
+                }
+            }
+            return colors;
+        }
+
+        function getColorBankTotal() {
+            return colorBankEntries.reduce((sum, entry) => sum + sanitizeColorCount(entry.count), 0);
+        }
+
+        function renderColorBankEditor() {
+            usedColors.innerHTML = "";
+
+            if (colorBankEntries.length === 0) {
+                const emptyText = document.createElement("p");
+                emptyText.className = "small";
+                emptyText.textContent = "No colors configured.";
+                usedColors.appendChild(emptyText);
+            }
+
+            colorBankEntries.forEach((entry, index) => {
+                const row = document.createElement("div");
+                row.className = "color-bank-row";
+
+                const colorInput = document.createElement("input");
+                colorInput.type = "color";
+                colorInput.value = entry.color;
+                colorInput.title = "Change color";
+
+                const codeLabel = document.createElement("code");
+                codeLabel.textContent = entry.color;
+
+                const countInput = document.createElement("input");
+                countInput.type = "number";
+                countInput.min = "0";
+                countInput.step = "1";
+                countInput.value = String(entry.count);
+                countInput.title = "Hex count";
+                countInput.addEventListener("input", (event) => {
+                    colorBankEntries[index].count = sanitizeColorCount(event.target.value);
+                    renderColorBankEditor();
+                });
+
+                const applyBtn = document.createElement("button");
+                applyBtn.type = "button";
+                applyBtn.className = "apply-color-btn";
+                applyBtn.textContent = "Apply";
+                applyBtn.addEventListener("click", () => {
+                    const oldColor = colorBankEntries[index].color;
+                    const newColor = normalizeHexColor(colorInput.value);
+                    if (!newColor || oldColor === newColor) return;
+
+                    colorBankEntries[index].color = newColor;
+                    replaceColorOnBoard(oldColor, newColor);
+                    mergeDuplicateColorBankEntries();
+                    renderColorBankEditor();
+                });
+
+                const deleteBtn = document.createElement("button");
+                deleteBtn.type = "button";
+                deleteBtn.className = "delete-color-btn";
+                deleteBtn.textContent = "Delete";
+                deleteBtn.addEventListener("click", () => {
+                    colorBankEntries.splice(index, 1);
+                    renderColorBankEditor();
+                });
+
+                row.appendChild(colorInput);
+                row.appendChild(codeLabel);
+                row.appendChild(countInput);
+                row.appendChild(applyBtn);
+                row.appendChild(deleteBtn);
+                usedColors.appendChild(row);
+            });
+
+            colorBankTotal.textContent = `Total Hexes: ${getColorBankTotal()}`;
+            updateColoredCountLabel();
+        }
+
+        function updateBackgroundFromInputs() {
+            hexBoard.style.backgroundColor = boardBgInput.value;
+            document.body.style.backgroundColor = pageBgInput.value;
+        }
+
+        function sanitizeOpacityPercent(value) {
+            const parsed = Number.parseInt(value, 10);
+            if (Number.isNaN(parsed)) return 100;
+            return Math.max(0, Math.min(100, parsed));
+        }
+
+        function updateEmptyBorderStyleFromInputs() {
+            const emptyBorderColor = emptyBorderColorInput.value;
+            const emptyBorderOpacity = sanitizeOpacityPercent(emptyBorderOpacityInput.value);
+            emptyBorderOpacityInput.value = String(emptyBorderOpacity);
+            document.documentElement.style.setProperty("--empty-border-color", emptyBorderColor);
+            document.documentElement.style.setProperty("--empty-border-opacity", String(emptyBorderOpacity / 100));
+        }
+
+        function setHexColor(index, color, skipSummary = false) {
+            hexColors[index] = color;
+            const hex = document.querySelector(`.hexagon-tile[data-index="${index}"]`);
+            applyHexStyle(hex, color);
+            if (!skipSummary) {
+                updateColoredCountLabel();
+            }
+        }
+
+        function getHexPoints(x, y) {
+            const cx = x + (HEX_WIDTH / 2);
+            const cy = y + (HEX_HEIGHT / 2);
+            return HEX_BASE_POINTS.map(([px, py]) => {
+                const sx = cx + (px - (HEX_WIDTH / 2));
+                const sy = cy + (py - (HEX_HEIGHT / 2));
+                return `${sx},${sy}`;
+            }).join(" ");
+        }
+
+        function clearDragClasses() {
+            const highlighted = hexGrid.querySelectorAll(".drag-source, .drag-target");
+            highlighted.forEach((tile) => {
+                tile.classList.remove("drag-source");
+                tile.classList.remove("drag-target");
+            });
+        }
+
+        function clampZoom(zoom) {
+            return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
+        }
+
+        function getRenderZoom() {
+            return boardZoom * BASE_BOARD_ZOOM;
+        }
+
+        function updateZoomLabel() {
+            zoomLabel.textContent = `Zoom: ${Math.round(boardZoom * 100)}%`;
+            zoomResetBtn.textContent = `${Math.round(boardZoom * 100)}%`;
+        }
+
+        function getCellPosition(index, metrics) {
+            const row = Math.floor(index / COLUMNS);
+            const col = index % COLUMNS;
+            return {
+                x: BOARD_PADDING_X + (metrics.rowStartOffsets[row] - metrics.minRowStartOffset) + (col * metrics.effectiveStepX),
+                y: BOARD_PADDING_Y + (row * metrics.effectiveStepY)
+            };
+        }
+
+        function getOccupiedBounds(metrics) {
+            const occupiedIndices = getOccupiedIndices();
+            if (occupiedIndices.length === 0) return null;
+
+            let minX = Number.POSITIVE_INFINITY;
+            let minY = Number.POSITIVE_INFINITY;
+            let maxX = Number.NEGATIVE_INFINITY;
+            let maxY = Number.NEGATIVE_INFINITY;
+
+            for (const index of occupiedIndices) {
+                const { x, y } = getCellPosition(index, metrics);
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x + HEX_WIDTH);
+                maxY = Math.max(maxY, y + HEX_HEIGHT);
+            }
+
+            return { minX, minY, maxX, maxY };
+        }
+
+        function clampScroll(left, top) {
+            const maxLeft = Math.max(0, hexBoard.scrollWidth - hexBoard.clientWidth);
+            const maxTop = Math.max(0, hexBoard.scrollHeight - hexBoard.clientHeight);
+            return {
+                left: Math.max(0, Math.min(maxLeft, left)),
+                top: Math.max(0, Math.min(maxTop, top))
+            };
+        }
+
+        function centerBoardView() {
+            if (!lastLayoutMetrics) return;
+
+            const renderZoom = getRenderZoom();
+            const occupiedBounds = getOccupiedBounds(lastLayoutMetrics);
+            const targetBounds = occupiedBounds || {
+                minX: 0,
+                minY: 0,
+                maxX: lastLayoutMetrics.boardWidth,
+                maxY: lastLayoutMetrics.boardHeight
+            };
+
+            const centerX = ((targetBounds.minX + targetBounds.maxX) / 2) * renderZoom;
+            const centerY = ((targetBounds.minY + targetBounds.maxY) / 2) * renderZoom;
+            const next = clampScroll(
+                centerX - (hexBoard.clientWidth / 2),
+                centerY - (hexBoard.clientHeight / 2)
+            );
+
+            hexBoard.scrollLeft = next.left;
+            hexBoard.scrollTop = next.top;
+        }
+
+        function setBoardZoom(nextZoom, anchorClientX = null, anchorClientY = null) {
+            const clamped = clampZoom(nextZoom);
+            if (clamped === boardZoom) return;
+
+            const rect = hexBoard.getBoundingClientRect();
+            const effectiveAnchorClientX = anchorClientX === null
+                ? rect.left + (hexBoard.clientWidth / 2)
+                : anchorClientX;
+            const effectiveAnchorClientY = anchorClientY === null
+                ? rect.top + (hexBoard.clientHeight / 2)
+                : anchorClientY;
+
+            let localX = null;
+            let localY = null;
+            let anchorOffsetX = null;
+            let anchorOffsetY = null;
+
+            if (effectiveAnchorClientX !== null && effectiveAnchorClientY !== null) {
+                anchorOffsetX = effectiveAnchorClientX - rect.left;
+                anchorOffsetY = effectiveAnchorClientY - rect.top;
+                localX = (hexBoard.scrollLeft + anchorOffsetX) / getRenderZoom();
+                localY = (hexBoard.scrollTop + anchorOffsetY) / getRenderZoom();
+            }
+
+            boardZoom = clamped;
+            renderGrid();
+            updateZoomLabel();
+
+            if (localX !== null && localY !== null) {
+                const next = clampScroll(
+                    (localX * getRenderZoom()) - anchorOffsetX,
+                    (localY * getRenderZoom()) - anchorOffsetY
+                );
+                hexBoard.scrollLeft = next.left;
+                hexBoard.scrollTop = next.top;
+            }
+        }
+
+        function zoomBy(step, anchorClientX = null, anchorClientY = null) {
+            setBoardZoom(boardZoom + step, anchorClientX, anchorClientY);
+        }
+
+        function handleBoardWheel(event) {
+            if (!event.ctrlKey && !event.metaKey) return;
+            event.preventDefault();
+            const delta = event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
+            zoomBy(delta, event.clientX, event.clientY);
+        }
+
+        function resetDragVisuals() {
+            if (!dragSourceTile) return;
+            dragSourceTile.style.transform = "";
+            dragSourceTile.style.pointerEvents = "";
+            dragSourceTile.style.transition = "";
+            dragSourceTile = null;
+        }
+
+        function getTileIndexFromPoint(clientX, clientY) {
+            const hovered = document.elementFromPoint(clientX, clientY);
+            const tile = hovered && hovered.closest ? hovered.closest(".hexagon-tile") : null;
+            if (!tile) return null;
+            const index = Number.parseInt(tile.dataset.index, 10);
+            if (Number.isNaN(index)) return null;
+            return index;
+        }
+
+        function swapOrMoveHexes(sourceIndex, targetIndex) {
+            if (sourceIndex === targetIndex) return;
+
+            const sourceColor = hexColors[sourceIndex];
+            const targetColor = hexColors[targetIndex];
+            if (!sourceColor) return;
+
+            setHexColor(sourceIndex, targetColor || null, true);
+            setHexColor(targetIndex, sourceColor, true);
+            updateColoredCountLabel();
+        }
+
+        function handleBoardPointerDown(event) {
+            if (event.button !== 0) return;
+            const sourceIndex = getTileIndexFromPoint(event.clientX, event.clientY);
+            if (sourceIndex === null || !hexColors[sourceIndex]) return;
+
+            event.preventDefault();
+            dragSourceIndex = sourceIndex;
+            dragHoverIndex = sourceIndex;
+            dragPointerId = event.pointerId;
+            dragStartClientX = event.clientX;
+            dragStartClientY = event.clientY;
+
+            clearDragClasses();
+            const sourceTile = hexGrid.querySelector(`.hexagon-tile[data-index="${sourceIndex}"]`);
+            if (sourceTile) {
+                dragSourceTile = sourceTile;
+                sourceTile.classList.add("drag-source");
+                sourceTile.style.transition = "none";
+                sourceTile.style.pointerEvents = "none";
+                hexGrid.appendChild(sourceTile);
+            }
+            hexGrid.setPointerCapture(event.pointerId);
+        }
+
+        function handleBoardPointerMove(event) {
+            if (dragPointerId !== event.pointerId || dragSourceIndex === null) return;
+
+            if (dragSourceTile) {
+                const deltaX = event.clientX - dragStartClientX;
+                const deltaY = event.clientY - dragStartClientY;
+                dragSourceTile.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+            }
+
+            const nextHoverIndex = getTileIndexFromPoint(event.clientX, event.clientY);
+            if (nextHoverIndex === dragHoverIndex) return;
+
+            dragHoverIndex = nextHoverIndex;
+            clearDragClasses();
+
+            const sourceTile = hexGrid.querySelector(`.hexagon-tile[data-index="${dragSourceIndex}"]`);
+            if (sourceTile) sourceTile.classList.add("drag-source");
+
+            if (nextHoverIndex !== null) {
+                const targetTile = hexGrid.querySelector(`.hexagon-tile[data-index="${nextHoverIndex}"]`);
+                if (targetTile) targetTile.classList.add("drag-target");
+            }
+        }
+
+        function finishBoardDrag(event) {
+            if (dragPointerId !== event.pointerId || dragSourceIndex === null) return;
+
+            const sourceIndex = dragSourceIndex;
+            const targetIndex = getTileIndexFromPoint(event.clientX, event.clientY);
+
+            if (targetIndex !== null) {
+                swapOrMoveHexes(sourceIndex, targetIndex);
+            }
+
+            if (hexGrid.hasPointerCapture(event.pointerId)) {
+                hexGrid.releasePointerCapture(event.pointerId);
+            }
+
+            clearDragClasses();
+            resetDragVisuals();
+            dragSourceIndex = null;
+            dragHoverIndex = null;
+            dragPointerId = null;
+        }
+
+        function paintBoardFromArray(colors) {
+            for (let i = 0; i < TOTAL_HEXAGONS; i += 1) {
+                setHexColor(i, colors[i] || null, true);
+            }
+            updateColoredCountLabel();
+        }
+
+        function getRandomizedDefaultCardBoard() {
+            const randomizedCards = getConfiguredColorList();
+            shuffleInPlace(randomizedCards);
+            const shuffleRegion = getMiddleRegionIndices(SHUFFLE_REGION_COLS, SHUFFLE_REGION_ROWS);
+            const connectedCells = getRandomConnectedCells(randomizedCards.length, shuffleRegion);
+            const board = createBoardFromCards(randomizedCards, connectedCells);
+
+            return { board, randomizedCards };
+        }
+
+        function getOccupiedIndices() {
+            const occupied = [];
+            for (let i = 0; i < hexColors.length; i += 1) {
+                if (hexColors[i]) occupied.push(i);
+            }
+            return occupied;
+        }
+
+        function renderGrid() {
+            hexGrid.innerHTML = "";
+            const effectiveStepX = HEX_STEP_X + HEX_GAP_X;
+            const effectiveStepY = HEX_STEP_Y + HEX_GAP_Y;
+            const effectiveRowOffsetX = ROW_OFFSET_X + (HEX_GAP_X / 2);
+            const rowStartOffsets = Array.from(
+                { length: ROWS },
+                (_, row) => ((row % 2) * effectiveRowOffsetX) + (row % 2 === 1 ? ODD_ROW_EXTRA_OFFSET : 0)
+            );
+            const minRowStartOffset = Math.min(...rowStartOffsets);
+            const maxRowStartOffset = Math.max(...rowStartOffsets);
+            const contentWidth = ((COLUMNS - 1) * effectiveStepX) + HEX_WIDTH + (maxRowStartOffset - minRowStartOffset);
+            const contentHeight = ((ROWS - 1) * effectiveStepY) + HEX_HEIGHT;
+            const boardWidth = contentWidth + (BOARD_PADDING_X * 2);
+            const boardHeight = contentHeight + (BOARD_PADDING_Y * 2);
+            const renderZoom = getRenderZoom();
+            hexGrid.setAttribute("width", String(boardWidth * renderZoom));
+            hexGrid.setAttribute("height", String(boardHeight * renderZoom));
+            hexGrid.setAttribute("viewBox", `0 0 ${boardWidth} ${boardHeight}`);
+            lastLayoutMetrics = {
+                effectiveStepX,
+                effectiveStepY,
+                rowStartOffsets,
+                minRowStartOffset,
+                boardWidth,
+                boardHeight
+            };
+
+            for (let row = 0; row < ROWS; row += 1) {
+                for (let col = 0; col < COLUMNS; col += 1) {
+                    const cellIndex = (row * COLUMNS) + col;
+                    const { x, y } = getCellPosition(cellIndex, lastLayoutMetrics);
+
+                    const hex = document.createElementNS(SVG_NS, "polygon");
+                    hex.setAttribute("class", "hexagon-tile");
+                    hex.dataset.index = String(cellIndex);
+                    hex.setAttribute("points", getHexPoints(x, y));
+                    applyHexStyle(hex, hexColors[cellIndex]);
+
+                    hexGrid.appendChild(hex);
+                }
+            }
+        }
+
+        hexGrid.addEventListener("pointerdown", handleBoardPointerDown);
+        hexGrid.addEventListener("pointermove", handleBoardPointerMove);
+        hexGrid.addEventListener("pointerup", finishBoardDrag);
+        hexGrid.addEventListener("pointercancel", finishBoardDrag);
+        hexBoard.addEventListener("wheel", handleBoardWheel, { passive: false });
+        boardBgInput.addEventListener("input", updateBackgroundFromInputs);
+        pageBgInput.addEventListener("input", updateBackgroundFromInputs);
+        emptyBorderColorInput.addEventListener("input", updateEmptyBorderStyleFromInputs);
+        emptyBorderOpacityInput.addEventListener("input", updateEmptyBorderStyleFromInputs);
+        zoomOutBtn.addEventListener("click", () => zoomBy(-ZOOM_STEP));
+        zoomInBtn.addEventListener("click", () => zoomBy(ZOOM_STEP));
+        zoomResetBtn.addEventListener("click", () => setBoardZoom(1));
+        centerViewBtn.addEventListener("click", centerBoardView);
+
+        clearBtn.addEventListener("click", () => {
+            for (let i = 0; i < hexColors.length; i += 1) {
+                setHexColor(i, null, true);
+            }
+            updateColoredCountLabel();
+        });
+
+        shuffleLocationBtn.addEventListener("click", () => {
+            const { board } = getRandomizedDefaultCardBoard();
+            paintBoardFromArray(board);
+            centerBoardView();
+        });
+
+        shuffleColorsBtn.addEventListener("click", () => {
+            const occupiedIndices = getOccupiedIndices();
+            if (occupiedIndices.length === 0) return;
+
+            const shuffledColors = occupiedIndices.map((index) => hexColors[index]);
+            shuffleInPlace(shuffledColors);
+            for (let i = 0; i < occupiedIndices.length; i += 1) {
+                setHexColor(occupiedIndices[i], shuffledColors[i], true);
+            }
+            updateColoredCountLabel();
+        });
+
+        addColorRowBtn.addEventListener("click", () => {
+            colorBankEntries.push({ color: "#d1d5db", count: 1 });
+            renderColorBankEditor();
+        });
+
+        renderGrid();
+        renderColorBankEditor();
+        updateBackgroundFromInputs();
+        updateEmptyBorderStyleFromInputs();
+        updateZoomLabel();
+        requestAnimationFrame(centerBoardView);
+    </script>
+</body>
+</html>
