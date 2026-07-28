@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hexagon Art Builder</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
         :root {
             --bg: #f6f8fb;
@@ -83,6 +84,16 @@
             gap: 10px;
             align-items: center;
             flex-wrap: wrap;
+        }
+
+        #savedGridSelect {
+            flex: 1;
+            min-width: 160px;
+            border: 1px solid #d1d5db;
+            background: #fff;
+            border-radius: 8px;
+            padding: 8px 10px;
+            color: var(--text);
         }
 
         #primaryControls {
@@ -296,6 +307,17 @@
             display: none;
         }
 
+        #mobileActionBar button {
+            min-width: 54px;
+            font-size: 20px;
+            line-height: 1;
+            padding: 10px 12px;
+        }
+
+        #mobileActionBar .action-icon {
+            pointer-events: none;
+        }
+
         #drawerBackdrop {
             display: none;
             position: fixed;
@@ -341,14 +363,17 @@
 
             #mobileActionBar {
                 display: flex;
-                gap: 8px;
+                gap: 6px;
+                flex-wrap: nowrap;
                 flex-shrink: 0;
             }
 
             #mobileActionBar button {
-                flex: 1;
-                font-size: 14px;
-                padding: 10px 6px;
+                flex: 1 1 0;
+                min-width: 0;
+                font-size: 20px;
+                line-height: 1;
+                padding: 10px 0;
             }
 
             .layout {
@@ -429,9 +454,10 @@
     </header>
 
     <div id="mobileActionBar">
-        <button id="shuffleLocationMobileBtn" type="button">Shuffle location</button>
-        <button id="shuffleColorsMobileBtn" type="button">Shuffle colors</button>
-        <button id="centerViewMobileBtn" type="button">Center view</button>
+        <button id="shuffleLocationMobileBtn" type="button" title="Shuffle location" aria-label="Shuffle location"><i class="fa-solid fa-shuffle action-icon"></i></button>
+        <button id="shuffleColorsMobileBtn" type="button" title="Shuffle colors" aria-label="Shuffle colors"><i class="fa-solid fa-palette action-icon"></i></button>
+        <button id="centerViewMobileBtn" type="button" title="Center view" aria-label="Center view"><i class="fa-solid fa-crosshairs action-icon"></i></button>
+        <button id="saveGridMobileBtn" type="button" title="Save grid" aria-label="Save grid"><i class="fa-solid fa-floppy-disk action-icon"></i></button>
     </div>
 
     <div class="layout">
@@ -445,11 +471,18 @@
                 <button id="zoomInBtn" type="button">Zoom +</button>
                 <button id="zoomResetBtn" type="button">100%</button>
                 <button id="centerViewBtn" type="button">Center view</button>
+                <button id="saveGridBtn" type="button">Save grid</button>
                 <span id="zoomLabel" class="small">Zoom: 100%</span>
             </div>
 
             <p id="countLabel"><strong>Colored hexagons:</strong> 24 / 625</p>
             <p class="small">Tip: drag to move/swap. Use Ctrl/Cmd + mouse wheel to zoom in/out.</p>
+            <div class="row">
+                <select id="savedGridSelect" aria-label="Saved grids"></select>
+                <button id="loadGridBtn" type="button">Load</button>
+                <button id="deleteGridBtn" type="button" class="delete-color-btn">Delete</button>
+            </div>
+            <p id="savedGridStatus" class="small">Saved grid: none</p>
 
             <h3>Used color bank</h3>
             <div id="usedColors"></div>
@@ -491,6 +524,8 @@
         const COLUMNS = 25;
         const ROWS = 25;
         const TOTAL_HEXAGONS = COLUMNS * ROWS;
+        const SETTINGS_STORAGE_KEY = "hexagon-art-builder.settings.v1";
+        const GRID_STORAGE_KEY = "hexagon-art-builder.grid.v1";
         const SVG_NS = "http://www.w3.org/2000/svg";
         const HEX_WIDTH = 88;
         const HEX_HEIGHT = 76;
@@ -524,6 +559,7 @@
         let lastLayoutMetrics = null;
         let shufflePreviewIndexSet = new Set();
         let shufflePreviewActive = false;
+        let shouldAutoFitOnInit = true;
 
         const BASE_BOARD_ZOOM = 0.7;
         const MIN_ZOOM = 0.5;
@@ -543,6 +579,7 @@
         const zoomInBtn = document.getElementById("zoomInBtn");
         const zoomResetBtn = document.getElementById("zoomResetBtn");
         const centerViewBtn = document.getElementById("centerViewBtn");
+        const saveGridBtn = document.getElementById("saveGridBtn");
         const zoomLabel = document.getElementById("zoomLabel");
         const clearBtn = document.getElementById("clearBtn");
         const usedColors = document.getElementById("usedColors");
@@ -555,6 +592,10 @@
         const pageBgInput = document.getElementById("pageBgInput");
         const emptyBorderColorInput = document.getElementById("emptyBorderColorInput");
         const emptyBorderOpacityInput = document.getElementById("emptyBorderOpacityInput");
+        const savedGridSelect = document.getElementById("savedGridSelect");
+        const loadGridBtn = document.getElementById("loadGridBtn");
+        const deleteGridBtn = document.getElementById("deleteGridBtn");
+        const savedGridStatus = document.getElementById("savedGridStatus");
         const hexBoard = document.getElementById("hexBoard");
 
         function shuffleInPlace(items) {
@@ -577,6 +618,311 @@
 
         function getDebugVisualColIndex(row, col) {
             return ((col * 2) + (row % 2)) - DEBUG_COL_ORIGIN_VALUE;
+        }
+
+        function toVisualColumnLabel(visualColIndex) {
+            return visualColIndex >= 0
+                ? toSpreadsheetColumnLabel(visualColIndex)
+                : `-${toSpreadsheetColumnLabel((-visualColIndex) - 1)}`;
+        }
+
+        function getViewportClass() {
+            return window.innerWidth <= 860 ? "mobile" : "desktop";
+        }
+
+        function readStorageItem(key) {
+            try {
+                return window.localStorage.getItem(key);
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function writeStorageItem(key, value) {
+            try {
+                window.localStorage.setItem(key, value);
+                return true;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function normalizeGridSaveName(value) {
+            return String(value || "").trim().slice(0, 80);
+        }
+
+        function formatSavedAt(value) {
+            const date = new Date(value || "");
+            return Number.isNaN(date.getTime()) ? "unknown time" : date.toLocaleString();
+        }
+
+        function readSavedGridCollection() {
+            const empty = { version: 2, saves: [] };
+            const raw = readStorageItem(GRID_STORAGE_KEY);
+            if (!raw) return empty;
+
+            try {
+                const parsed = JSON.parse(raw);
+                if (parsed && Array.isArray(parsed.saves)) {
+                    const saves = parsed.saves
+                        .map((item) => ({
+                            name: normalizeGridSaveName(item && item.name),
+                            savedAt: item && item.savedAt,
+                            payload: item && item.payload
+                        }))
+                        .filter((item) =>
+                            item.name
+                            && item.payload
+                            && Array.isArray(item.payload.matrix)
+                            && Number.isInteger(item.payload.minVisualCol)
+                        );
+                    return { version: 2, saves };
+                }
+
+                // Backward compatibility with prior single-grid payload shape.
+                if (parsed && Array.isArray(parsed.matrix) && Number.isInteger(parsed.minVisualCol)) {
+                    return {
+                        version: 2,
+                        saves: [{
+                            name: "Latest grid",
+                            savedAt: parsed.savedAt || new Date().toISOString(),
+                            payload: parsed
+                        }]
+                    };
+                }
+            } catch (error) {
+                return empty;
+            }
+
+            return empty;
+        }
+
+        function writeSavedGridCollection(collection) {
+            const payload = {
+                version: 2,
+                saves: collection.saves.map((item) => ({
+                    name: normalizeGridSaveName(item.name),
+                    savedAt: item.savedAt,
+                    payload: item.payload
+                }))
+            };
+            return writeStorageItem(GRID_STORAGE_KEY, JSON.stringify(payload));
+        }
+
+        function updateSavedGridListUI(preferredName = null) {
+            const collection = readSavedGridCollection();
+            savedGridSelect.innerHTML = "";
+
+            if (collection.saves.length === 0) {
+                const option = document.createElement("option");
+                option.value = "";
+                option.textContent = "No saved grids";
+                savedGridSelect.appendChild(option);
+                savedGridSelect.disabled = true;
+                loadGridBtn.disabled = true;
+                deleteGridBtn.disabled = true;
+                savedGridStatus.textContent = "Saved grids: none";
+                return;
+            }
+
+            collection.saves.sort((a, b) => new Date(b.savedAt || 0) - new Date(a.savedAt || 0));
+            for (const save of collection.saves) {
+                const option = document.createElement("option");
+                option.value = save.name;
+                option.textContent = `${save.name} (${formatSavedAt(save.savedAt)})`;
+                savedGridSelect.appendChild(option);
+            }
+
+            const preferredExists = preferredName
+                && collection.saves.some((item) => item.name === preferredName);
+            savedGridSelect.value = preferredExists ? preferredName : collection.saves[0].name;
+            savedGridSelect.disabled = false;
+            loadGridBtn.disabled = false;
+            deleteGridBtn.disabled = false;
+            savedGridStatus.textContent = `Saved grids: ${collection.saves.length}`;
+        }
+
+        function buildGridMatrixPayload() {
+            let minVisualCol = Number.POSITIVE_INFINITY;
+            let maxVisualCol = Number.NEGATIVE_INFINITY;
+
+            for (let row = 0; row < ROWS; row += 1) {
+                for (let col = 0; col < COLUMNS; col += 1) {
+                    const visualCol = getDebugVisualColIndex(row, col);
+                    minVisualCol = Math.min(minVisualCol, visualCol);
+                    maxVisualCol = Math.max(maxVisualCol, visualCol);
+                }
+            }
+
+            const width = (maxVisualCol - minVisualCol) + 1;
+            const matrix = Array.from({ length: ROWS }, () => Array.from({ length: width }, () => null));
+
+            for (let row = 0; row < ROWS; row += 1) {
+                for (let col = 0; col < COLUMNS; col += 1) {
+                    const visualCol = getDebugVisualColIndex(row, col);
+                    const matrixCol = visualCol - minVisualCol;
+                    const index = toBoardIndex(row, col);
+                    matrix[row][matrixCol] = hexColors[index] || null;
+                }
+            }
+
+            const columnLabels = Array.from(
+                { length: width },
+                (_, index) => toVisualColumnLabel(minVisualCol + index)
+            );
+
+            return {
+                version: 1,
+                rows: ROWS,
+                columns: columnLabels,
+                minVisualCol,
+                maxVisualCol,
+                matrix,
+                savedAt: new Date().toISOString()
+            };
+        }
+
+        function loadGridFromPayload(payload) {
+            if (!payload || !Array.isArray(payload.matrix) || !Number.isInteger(payload.minVisualCol)) {
+                return false;
+            }
+
+            const board = Array.from({ length: TOTAL_HEXAGONS }, () => null);
+            const maxRows = Math.min(ROWS, payload.matrix.length);
+
+            for (let row = 0; row < maxRows; row += 1) {
+                const rowValues = Array.isArray(payload.matrix[row]) ? payload.matrix[row] : [];
+                for (let col = 0; col < COLUMNS; col += 1) {
+                    const visualCol = getDebugVisualColIndex(row, col);
+                    const matrixCol = visualCol - payload.minVisualCol;
+                    if (matrixCol < 0 || matrixCol >= rowValues.length) continue;
+                    const value = rowValues[matrixCol];
+                    const normalizedColor = typeof value === "string" ? normalizeHexColor(value) : "";
+                    board[toBoardIndex(row, col)] = /^#[0-9a-f]{6}$/.test(normalizedColor) ? normalizedColor : null;
+                }
+            }
+
+            paintBoardFromArray(board);
+            fitBoardToContent();
+            return true;
+        }
+
+        function saveGridToStorage() {
+            const collection = readSavedGridCollection();
+            const defaultName = savedGridSelect && !savedGridSelect.disabled && savedGridSelect.value
+                ? savedGridSelect.value
+                : `Grid ${collection.saves.length + 1}`;
+            const enteredName = window.prompt("Save grid name:", defaultName);
+            if (enteredName === null) return;
+            const name = normalizeGridSaveName(enteredName);
+            if (!name) return;
+
+            const payload = buildGridMatrixPayload();
+            const existingIndex = collection.saves.findIndex(
+                (item) => item.name.toLowerCase() === name.toLowerCase()
+            );
+            const saveRecord = { name, savedAt: new Date().toISOString(), payload };
+
+            if (existingIndex >= 0) {
+                collection.saves[existingIndex] = saveRecord;
+            } else {
+                collection.saves.push(saveRecord);
+            }
+
+            const saved = writeSavedGridCollection(collection);
+            if (!saved) return;
+            updateSavedGridListUI(name);
+        }
+
+        function loadSavedGridFromStorage() {
+            const selectedName = normalizeGridSaveName(savedGridSelect.value);
+            if (!selectedName) return;
+
+            const collection = readSavedGridCollection();
+            const selected = collection.saves.find((item) => item.name === selectedName);
+            if (!selected) return;
+
+            if (loadGridFromPayload(selected.payload)) {
+                updateSavedGridListUI(selected.name);
+            }
+        }
+
+        function deleteSelectedSavedGrid() {
+            const selectedName = normalizeGridSaveName(savedGridSelect.value);
+            if (!selectedName) return;
+
+            const collection = readSavedGridCollection();
+            const index = collection.saves.findIndex((item) => item.name === selectedName);
+            if (index < 0) return;
+
+            const confirmed = window.confirm(`Delete saved grid "${selectedName}"?`);
+            if (!confirmed) return;
+
+            collection.saves.splice(index, 1);
+            const saved = writeSavedGridCollection(collection);
+            if (!saved) return;
+            updateSavedGridListUI();
+        }
+
+        function saveSettingsToStorage() {
+            const payload = {
+                version: 1,
+                colorBankEntries: colorBankEntries.map((entry) => ({
+                    color: normalizeHexColor(entry.color),
+                    count: sanitizeColorCount(entry.count)
+                })),
+                boardBg: boardBgInput.value,
+                pageBg: pageBgInput.value,
+                emptyBorderColor: emptyBorderColorInput.value,
+                emptyBorderOpacity: sanitizeOpacityPercent(emptyBorderOpacityInput.value),
+                boardZoom,
+                viewportClass: getViewportClass()
+            };
+            writeStorageItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
+        }
+
+        function loadSettingsFromStorage() {
+            const raw = readStorageItem(SETTINGS_STORAGE_KEY);
+            if (!raw) return;
+
+            try {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed.colorBankEntries)) {
+                    const loadedEntries = parsed.colorBankEntries
+                        .map((entry) => ({
+                            color: normalizeHexColor(entry && entry.color),
+                            count: sanitizeColorCount(entry && entry.count)
+                        }))
+                        .filter((entry) => /^#[0-9a-f]{6}$/.test(entry.color));
+                    if (loadedEntries.length > 0) {
+                        colorBankEntries = loadedEntries;
+                    }
+                }
+
+                if (/^#[0-9a-f]{6}$/i.test(parsed.boardBg || "")) {
+                    boardBgInput.value = parsed.boardBg;
+                }
+                if (/^#[0-9a-f]{6}$/i.test(parsed.pageBg || "")) {
+                    pageBgInput.value = parsed.pageBg;
+                }
+                if (/^#[0-9a-f]{6}$/i.test(parsed.emptyBorderColor || "")) {
+                    emptyBorderColorInput.value = parsed.emptyBorderColor;
+                }
+                if (parsed.emptyBorderOpacity !== undefined) {
+                    emptyBorderOpacityInput.value = String(sanitizeOpacityPercent(parsed.emptyBorderOpacity));
+                }
+                if (Number.isFinite(parsed.boardZoom)) {
+                    const savedViewportClass = String(parsed.viewportClass || "");
+                    if (!savedViewportClass || savedViewportClass !== getViewportClass()) {
+                        boardZoom = 1;
+                    } else {
+                        boardZoom = clampZoom(parsed.boardZoom);
+                    }
+                    shouldAutoFitOnInit = false;
+                }
+            } catch (error) {
+                // ignore malformed saved settings
+            }
         }
 
         function isInsideBoard(row, col) {
@@ -883,11 +1229,13 @@
 
             colorBankTotal.textContent = `Total Hexes: ${getColorBankTotal()}`;
             updateColoredCountLabel();
+            saveSettingsToStorage();
         }
 
         function updateBackgroundFromInputs() {
             hexBoard.style.backgroundColor = boardBgInput.value;
             document.body.style.backgroundColor = pageBgInput.value;
+            saveSettingsToStorage();
         }
 
         function sanitizeOpacityPercent(value) {
@@ -902,6 +1250,7 @@
             emptyBorderOpacityInput.value = String(emptyBorderOpacity);
             document.documentElement.style.setProperty("--empty-border-color", emptyBorderColor);
             document.documentElement.style.setProperty("--empty-border-opacity", String(emptyBorderOpacity / 100));
+            saveSettingsToStorage();
         }
 
         function setHexColor(index, color, skipSummary = false) {
@@ -1025,7 +1374,7 @@
                 requestAnimationFrame(centerBoardView);
                 return;
             }
-            const padFactor = 0.88;
+            const padFactor = 0.82;
             const fitRenderZoom = Math.min(
                 (boardWidth * padFactor) / contentW,
                 (boardHeight * padFactor) / contentH
@@ -1034,12 +1383,14 @@
                 boardZoom = 1;
                 renderGrid();
                 updateZoomLabel();
+                saveSettingsToStorage();
                 requestAnimationFrame(centerBoardView);
                 return;
             }
             boardZoom = clampZoom(fitRenderZoom / BASE_BOARD_ZOOM);
             renderGrid();
             updateZoomLabel();
+            saveSettingsToStorage();
             requestAnimationFrame(centerBoardView);
         }
 
@@ -1070,6 +1421,7 @@
             boardZoom = clamped;
             renderGrid();
             updateZoomLabel();
+            saveSettingsToStorage();
 
             if (localX !== null && localY !== null) {
                 const next = clampScroll(
@@ -1337,9 +1689,7 @@
 
                     // DEBUG: visual/staggered coordinate labels aligned to tray layout
                     const visualColIndex = getDebugVisualColIndex(row, col);
-                    const colLetter = visualColIndex >= 0
-                        ? toSpreadsheetColumnLabel(visualColIndex)
-                        : `-${toSpreadsheetColumnLabel((-visualColIndex) - 1)}`;
+                    const colLetter = toVisualColumnLabel(visualColIndex);
                     const label = document.createElementNS(SVG_NS, "text");
                     label.setAttribute("x", String(x + HEX_WIDTH / 2));
                     label.setAttribute("y", String(y + HEX_HEIGHT / 2 + 4));
@@ -1408,6 +1758,7 @@
         const shuffleLocationMobileBtn = document.getElementById("shuffleLocationMobileBtn");
         const shuffleColorsMobileBtn = document.getElementById("shuffleColorsMobileBtn");
         const centerViewMobileBtn = document.getElementById("centerViewMobileBtn");
+        const saveGridMobileBtn = document.getElementById("saveGridMobileBtn");
 
         function openDrawer() {
             settingsDrawer.classList.add("drawer-open");
@@ -1427,6 +1778,11 @@
         shuffleLocationMobileBtn.addEventListener("click", () => shuffleLocationBtn.click());
         shuffleColorsMobileBtn.addEventListener("click", () => shuffleColorsBtn.click());
         centerViewMobileBtn.addEventListener("click", centerBoardView);
+        saveGridMobileBtn.addEventListener("click", saveGridToStorage);
+
+        saveGridBtn.addEventListener("click", saveGridToStorage);
+        loadGridBtn.addEventListener("click", loadSavedGridFromStorage);
+        deleteGridBtn.addEventListener("click", deleteSelectedSavedGrid);
 
         // Hover/focus preview for legal shuffle cells
         const shufflePreviewButtons = [shuffleLocationBtn, shuffleLocationMobileBtn];
@@ -1437,6 +1793,7 @@
             button.addEventListener("blur", () => setShufflePreviewActive(false));
         }
 
+        loadSettingsFromStorage();
         const initialShuffle = getRandomizedDefaultCardBoard();
         hexColors = [...initialShuffle.board];
 
@@ -1444,14 +1801,23 @@
         renderColorBankEditor();
         updateBackgroundFromInputs();
         updateEmptyBorderStyleFromInputs();
+        updateSavedGridListUI();
         updateZoomLabel();
-        requestAnimationFrame(fitBoardToContent);
-        window.addEventListener("load", () => {
+        if (shouldAutoFitOnInit) {
             requestAnimationFrame(fitBoardToContent);
+        } else {
+            requestAnimationFrame(centerBoardView);
+        }
+        window.addEventListener("load", () => {
+            if (shouldAutoFitOnInit) {
+                requestAnimationFrame(fitBoardToContent);
+            } else {
+                requestAnimationFrame(centerBoardView);
+            }
         });
         window.addEventListener("resize", () => {
             if (shufflePreviewActive) setShufflePreviewActive(true);
-            requestAnimationFrame(fitBoardToContent);
+            requestAnimationFrame(centerBoardView);
         });
     </script>
 </body>
