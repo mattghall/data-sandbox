@@ -25,7 +25,7 @@
 
         body {
             margin: 0;
-            padding: 0;
+            padding: 18px;
             font-family: Arial, sans-serif;
             background: var(--bg);
             color: var(--text);
@@ -33,6 +33,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            gap: 14px;
         }
 
         h1 {
@@ -41,8 +42,15 @@
         }
 
         .subtitle {
-            margin-top: 0;
+            margin: 0;
             color: var(--muted);
+        }
+
+        .app-header {
+            background: var(--panel);
+            border-radius: 12px;
+            padding: 16px 18px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
         }
 
         .layout {
@@ -64,7 +72,7 @@
         .controls {
             display: grid;
             gap: 14px;
-            padding: 16px;
+            padding: 18px;
             overflow-y: auto;
             min-height: 0;
             overscroll-behavior: contain;
@@ -75,6 +83,10 @@
             gap: 10px;
             align-items: center;
             flex-wrap: wrap;
+        }
+
+        #primaryControls {
+            scrollbar-width: thin;
         }
 
         .color-preset {
@@ -160,6 +172,15 @@
             stroke-opacity: 1 !important;
             stroke-width: 2.2 !important;
             stroke-dasharray: none !important;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .hexagon-tile.shuffle-preview {
+            stroke: #22c55e !important;
+            stroke-opacity: 0.35 !important;
+            stroke-width: 2 !important;
+            stroke-dasharray: 4 2 !important;
             stroke-linecap: round;
             stroke-linejoin: round;
         }
@@ -251,20 +272,172 @@
             padding: 6px 8px;
         }
 
+
+        /* ===== Mobile drawer elements (hidden on desktop) ===== */
+        #mobileMenuBtn {
+            display: none;
+            position: absolute;
+            top: 50%;
+            right: 14px;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            font-size: 22px;
+            line-height: 1;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: var(--panel);
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        #mobileActionBar {
+            display: none;
+        }
+
+        #drawerBackdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.38);
+            z-index: 200;
+        }
+
+        #drawerBackdrop.active { display: block; }
+
+        #drawerCloseBtn {
+            display: none;
+        }
+
         @media (max-width: 860px) {
+            body {
+                padding: 8px;
+                gap: 8px;
+                height: 100dvh;
+                overflow: hidden;
+            }
+
+            .app-header {
+                position: relative;
+                padding: 10px 58px 10px 14px;
+                flex-shrink: 0;
+            }
+
+            .app-header h1 {
+                font-size: 1.3rem;
+                margin-bottom: 2px;
+            }
+
+            .app-header .subtitle {
+                font-size: 12px;
+            }
+
+            #mobileMenuBtn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            #mobileActionBar {
+                display: flex;
+                gap: 8px;
+                flex-shrink: 0;
+            }
+
+            #mobileActionBar button {
+                flex: 1;
+                font-size: 14px;
+                padding: 10px 6px;
+            }
+
             .layout {
                 grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr);
+                gap: 0;
+                flex: 1;
+                min-height: 0;
+            }
+
+            /* Controls become a slide-in drawer */
+            .panel.controls {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                width: min(85vw, 340px);
+                max-height: none;
+                border-radius: 0 16px 16px 0;
+                box-shadow: 6px 0 28px rgba(0, 0, 0, 0.2);
+                transform: translateX(-110%);
+                transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+                z-index: 300;
+                overflow-y: auto;
+                padding: 16px;
+                gap: 14px;
+            }
+
+            .panel.controls.drawer-open {
+                transform: translateX(0);
+            }
+
+            #drawerCloseBtn {
+                display: block;
+                align-self: flex-end;
+                margin-bottom: 4px;
+                padding: 6px 12px;
+                font-size: 13px;
+            }
+
+            #hexBoard {
+                height: 100%;
+                min-height: 220px;
+            }
+
+            button {
+                padding: 7px 11px;
+                font-size: 13px;
+            }
+
+            .delete-color-btn,
+            .apply-color-btn {
+                padding: 5px 7px;
+                font-size: 12px;
+            }
+
+            .color-bank-row {
+                grid-template-columns: 36px minmax(60px, 1fr) 60px auto auto;
+                gap: 5px;
+            }
+
+            .color-bank-row input[type="number"] {
+                padding: 4px 6px;
+                font-size: 12px;
+            }
+
+            .color-bank-row code {
+                font-size: 11px;
             }
         }
     </style>
 </head>
 <body>
-    <h1>Hexagon Art Builder</h1>
-    <p class="subtitle">Use the hexagon board to build images by dragging colored hexes into new positions.</p>
+    <header class="app-header">
+        <h1>Hexagon Art Builder</h1>
+        <p class="subtitle">Use the hexagon board to build images by dragging colored hexes into new positions.</p>
+        <button id="mobileMenuBtn" type="button" aria-label="Open settings">&#9776;</button>
+    </header>
+
+    <div id="mobileActionBar">
+        <button id="shuffleLocationMobileBtn" type="button">Shuffle location</button>
+        <button id="shuffleColorsMobileBtn" type="button">Shuffle colors</button>
+        <button id="centerViewMobileBtn" type="button">Center view</button>
+    </div>
 
     <div class="layout">
-        <section class="panel controls">
-            <div class="row">
+        <section class="panel controls" id="settingsDrawer">
+            <button id="drawerCloseBtn" type="button" aria-label="Close settings">&#x2715; Close</button>
+            <div class="row" id="primaryControls">
                 <button id="clearBtn" type="button">Clear all</button>
                 <button id="shuffleLocationBtn" type="button">Shuffle location</button>
                 <button id="shuffleColorsBtn" type="button">Shuffle colors</button>
@@ -312,12 +485,12 @@
         </section>
     </div>
 
+    <div id="drawerBackdrop"></div>
+
     <script>
         const COLUMNS = 25;
         const ROWS = 25;
         const TOTAL_HEXAGONS = COLUMNS * ROWS;
-        const SHUFFLE_REGION_COLS = 8;
-        const SHUFFLE_REGION_ROWS = 5;
         const SVG_NS = "http://www.w3.org/2000/svg";
         const HEX_WIDTH = 88;
         const HEX_HEIGHT = 76;
@@ -340,10 +513,7 @@
             { color: "#e9d8b7", count: 4 }
         ];
         let colorBankEntries = defaultColorBankEntries.map((entry) => ({ ...entry }));
-        const initialShuffle = getRandomizedDefaultCardBoard();
-        const startingColors = initialShuffle.board;
-
-        let hexColors = [...startingColors];
+        let hexColors = Array.from({ length: TOTAL_HEXAGONS }, () => null);
         let dragSourceIndex = null;
         let dragHoverIndex = null;
         let dragPointerId = null;
@@ -352,6 +522,8 @@
         let dragSourceTile = null;
         let boardZoom = 1;
         let lastLayoutMetrics = null;
+        let shufflePreviewIndexSet = new Set();
+        let shufflePreviewActive = false;
 
         const BASE_BOARD_ZOOM = 0.7;
         const MIN_ZOOM = 0.5;
@@ -362,6 +534,9 @@
         const HEX_GAP_X = 15;
         const HEX_GAP_Y = 2;
         const ODD_ROW_EXTRA_OFFSET = 3;
+        const DEBUG_LABEL_ORIGIN_COL = 9; // J
+        const DEBUG_LABEL_ORIGIN_ROW = 1; // 2nd row (zero-based index)
+        const DEBUG_COL_ORIGIN_VALUE = (DEBUG_LABEL_ORIGIN_COL * 2) + (DEBUG_LABEL_ORIGIN_ROW % 2);
 
         const hexGrid = document.getElementById("hexGrid");
         const zoomOutBtn = document.getElementById("zoomOutBtn");
@@ -387,6 +562,21 @@
                 const j = Math.floor(Math.random() * (i + 1));
                 [items[i], items[j]] = [items[j], items[i]];
             }
+        }
+
+        function toSpreadsheetColumnLabel(index) {
+            let value = index + 1;
+            let label = "";
+            while (value > 0) {
+                const remainder = (value - 1) % 26;
+                label = String.fromCharCode(65 + remainder) + label;
+                value = Math.floor((value - 1) / 26);
+            }
+            return label;
+        }
+
+        function getDebugVisualColIndex(row, col) {
+            return ((col * 2) + (row % 2)) - DEBUG_COL_ORIGIN_VALUE;
         }
 
         function isInsideBoard(row, col) {
@@ -466,9 +656,46 @@
 
         function getRandomConnectedCells(targetCount, allowedIndices = null) {
             const allowed = allowedIndices ? new Set(allowedIndices) : null;
-            const startPool = allowedIndices && allowedIndices.length > 0
-                ? allowedIndices
+            const allIndices = allowedIndices && allowedIndices.length > 0
+                ? [...new Set(allowedIndices)]
                 : Array.from({ length: TOTAL_HEXAGONS }, (_, i) => i);
+
+            // Keep shuffles physically contiguous by selecting from a single connected component.
+            let startPool = allIndices;
+            if (allowed && allIndices.length > 0) {
+                const unvisited = new Set(allIndices);
+                const components = [];
+
+                while (unvisited.size > 0) {
+                    const seed = unvisited.values().next().value;
+                    const queue = [seed];
+                    const component = [];
+                    unvisited.delete(seed);
+
+                    while (queue.length > 0) {
+                        const current = queue.shift();
+                        component.push(current);
+                        for (const neighbor of getNeighborIndices(current)) {
+                            if (unvisited.has(neighbor)) {
+                                unvisited.delete(neighbor);
+                                queue.push(neighbor);
+                            }
+                        }
+                    }
+
+                    components.push(component);
+                }
+
+                const eligible = components.filter((component) => component.length >= targetCount);
+                if (eligible.length > 0) {
+                    startPool = eligible[Math.floor(Math.random() * eligible.length)];
+                } else {
+                    components.sort((a, b) => b.length - a.length);
+                    startPool = components[0] || [];
+                }
+            }
+
+            if (startPool.length === 0) return [];
             const startIndex = startPool[Math.floor(Math.random() * startPool.length)];
             const selected = [startIndex];
             const selectedSet = new Set(selected);
@@ -478,7 +705,7 @@
 
             while (selected.length < targetCount) {
                 if (frontier.size === 0) {
-                    return startPool.slice(0, targetCount);
+                    return selected;
                 }
 
                 const frontierList = [...frontier];
@@ -566,6 +793,17 @@
         function getConfiguredColorList() {
             const colors = [];
             for (const entry of colorBankEntries) {
+                const count = sanitizeColorCount(entry.count);
+                for (let i = 0; i < count; i += 1) {
+                    colors.push(normalizeHexColor(entry.color));
+                }
+            }
+            return colors;
+        }
+
+        function getDefaultColorList() {
+            const colors = [];
+            for (const entry of defaultColorBankEntries) {
                 const count = sanitizeColorCount(entry.count);
                 for (let i = 0; i < count; i += 1) {
                     colors.push(normalizeHexColor(entry.color));
@@ -694,6 +932,7 @@
         }
 
         function clampZoom(zoom) {
+            if (!Number.isFinite(zoom) || zoom <= 0) return 1;
             return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
         }
 
@@ -765,6 +1004,43 @@
 
             hexBoard.scrollLeft = next.left;
             hexBoard.scrollTop = next.top;
+        }
+
+        function fitBoardToContent(retryCount = 0) {
+            if (!lastLayoutMetrics) return;
+            const boardWidth = hexBoard.clientWidth;
+            const boardHeight = hexBoard.clientHeight;
+            if (boardWidth < 40 || boardHeight < 40) {
+                if (retryCount < 10) {
+                    requestAnimationFrame(() => fitBoardToContent(retryCount + 1));
+                }
+                return;
+            }
+            const bounds = getOccupiedBounds(lastLayoutMetrics);
+            if (!bounds) { requestAnimationFrame(centerBoardView); return; }
+
+            const contentW = bounds.maxX - bounds.minX;
+            const contentH = bounds.maxY - bounds.minY;
+            if (contentW <= 0 || contentH <= 0) {
+                requestAnimationFrame(centerBoardView);
+                return;
+            }
+            const padFactor = 0.88;
+            const fitRenderZoom = Math.min(
+                (boardWidth * padFactor) / contentW,
+                (boardHeight * padFactor) / contentH
+            );
+            if (!Number.isFinite(fitRenderZoom) || fitRenderZoom <= 0) {
+                boardZoom = 1;
+                renderGrid();
+                updateZoomLabel();
+                requestAnimationFrame(centerBoardView);
+                return;
+            }
+            boardZoom = clampZoom(fitRenderZoom / BASE_BOARD_ZOOM);
+            renderGrid();
+            updateZoomLabel();
+            requestAnimationFrame(centerBoardView);
         }
 
         function setBoardZoom(nextZoom, anchorClientX = null, anchorClientY = null) {
@@ -921,12 +1197,87 @@
             updateColoredCountLabel();
         }
 
+        function getShuffleRegionLayout() {
+            const board = document.getElementById("hexBoard");
+            const boardRect = board ? board.getBoundingClientRect() : { width: 0, height: 0 };
+            const boardW = Math.max(1, boardRect.width || (board && board.clientWidth) || window.innerWidth || 1);
+            const boardH = Math.max(1, boardRect.height || (board && board.clientHeight) || window.innerHeight || 1);
+            const ratio = boardW / boardH;
+            if (ratio < 0.82) return { mode: "portrait", cols: 5, rows: 8 };
+            if (ratio > 1.28) return { mode: "landscape", cols: 8, rows: 5 };
+            return { mode: "square", cols: 7, rows: 7 };
+        }
+
+        function getPortraitShuffleRegionIndices() {
+            const minVisualCol = 2;  // C
+            const maxVisualCol = 7;  // H
+            const minRow = 6;        // 1-based
+            const maxRow = 19;       // 1-based
+            const region = [];
+
+            for (let row = 0; row < ROWS; row += 1) {
+                const displayRow = row + 1;
+                if (displayRow < minRow || displayRow > maxRow) continue;
+                for (let col = 0; col < COLUMNS; col += 1) {
+                    const visualCol = getDebugVisualColIndex(row, col);
+                    if (visualCol >= minVisualCol && visualCol <= maxVisualCol) {
+                        region.push(toBoardIndex(row, col));
+                    }
+                }
+            }
+
+            return region;
+        }
+
+        function getShuffleRegionIndices() {
+            const layout = getShuffleRegionLayout();
+            if (layout.mode === "portrait") {
+                return getPortraitShuffleRegionIndices();
+            }
+            return getMiddleRegionIndices(layout.cols, layout.rows);
+        }
+
+        function setShufflePreviewActive(active) {
+            shufflePreviewActive = active;
+            shufflePreviewIndexSet = active ? new Set(getShuffleRegionIndices()) : new Set();
+
+            const tiles = hexGrid.querySelectorAll(".hexagon-tile");
+            for (const tile of tiles) {
+                const index = Number.parseInt(tile.dataset.index || "", 10);
+                if (Number.isInteger(index) && shufflePreviewIndexSet.has(index)) {
+                    tile.classList.add("shuffle-preview");
+                } else {
+                    tile.classList.remove("shuffle-preview");
+                }
+            }
+        }
+
         function getRandomizedDefaultCardBoard() {
-            const randomizedCards = getConfiguredColorList();
+            let randomizedCards = getConfiguredColorList();
+            if (randomizedCards.length === 0) {
+                randomizedCards = getDefaultColorList();
+            }
             shuffleInPlace(randomizedCards);
-            const shuffleRegion = getMiddleRegionIndices(SHUFFLE_REGION_COLS, SHUFFLE_REGION_ROWS);
-            const connectedCells = getRandomConnectedCells(randomizedCards.length, shuffleRegion);
-            const board = createBoardFromCards(randomizedCards, connectedCells);
+
+            const fallbackRegion = getMiddleRegionIndices(7, 7);
+            const requestedRegion = getShuffleRegionIndices();
+            const allowedRegion = requestedRegion.length > 0 ? requestedRegion : fallbackRegion;
+            let connectedCells = getRandomConnectedCells(randomizedCards.length, allowedRegion)
+                .filter((index) => Number.isInteger(index) && index >= 0 && index < TOTAL_HEXAGONS);
+
+            if (connectedCells.length < randomizedCards.length) {
+                connectedCells = getRandomConnectedCells(randomizedCards.length, fallbackRegion)
+                    .filter((index) => Number.isInteger(index) && index >= 0 && index < TOTAL_HEXAGONS);
+            }
+            if (connectedCells.length < randomizedCards.length) {
+                connectedCells = getCenteredConnectedCells(randomizedCards.length);
+            }
+
+            let board = createBoardFromCards(randomizedCards, connectedCells);
+            if (!board.some(Boolean)) {
+                const emergencyCells = getCenteredConnectedCells(randomizedCards.length);
+                board = createBoardFromCards(randomizedCards, emergencyCells);
+            }
 
             return { board, randomizedCards };
         }
@@ -977,8 +1328,25 @@
                     hex.dataset.index = String(cellIndex);
                     hex.setAttribute("points", getHexPoints(x, y));
                     applyHexStyle(hex, hexColors[cellIndex]);
-
+                    if (shufflePreviewIndexSet.has(cellIndex)) {
+                        hex.classList.add("shuffle-preview");
+                    }
                     hexGrid.appendChild(hex);
+
+                    // DEBUG: visual/staggered coordinate labels aligned to tray layout
+                    const visualColIndex = getDebugVisualColIndex(row, col);
+                    const colLetter = visualColIndex >= 0
+                        ? toSpreadsheetColumnLabel(visualColIndex)
+                        : `-${toSpreadsheetColumnLabel((-visualColIndex) - 1)}`;
+                    const label = document.createElementNS(SVG_NS, "text");
+                    label.setAttribute("x", String(x + HEX_WIDTH / 2));
+                    label.setAttribute("y", String(y + HEX_HEIGHT / 2 + 4));
+                    label.setAttribute("text-anchor", "middle");
+                    label.setAttribute("font-size", "10");
+                    label.setAttribute("fill", "rgba(0,0,0,0.45)");
+                    label.setAttribute("pointer-events", "none");
+                    label.textContent = `${colLetter}${row + 1}`;
+                    hexGrid.appendChild(label);
                 }
             }
         }
@@ -1007,7 +1375,7 @@
         shuffleLocationBtn.addEventListener("click", () => {
             const { board } = getRandomizedDefaultCardBoard();
             paintBoardFromArray(board);
-            centerBoardView();
+            fitBoardToContent();
         });
 
         shuffleColorsBtn.addEventListener("click", () => {
@@ -1027,12 +1395,59 @@
             renderColorBankEditor();
         });
 
+        // ── Mobile drawer ──
+        const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+        const drawerBackdrop = document.getElementById("drawerBackdrop");
+        const drawerCloseBtn = document.getElementById("drawerCloseBtn");
+        const settingsDrawer = document.getElementById("settingsDrawer");
+        const shuffleLocationMobileBtn = document.getElementById("shuffleLocationMobileBtn");
+        const shuffleColorsMobileBtn = document.getElementById("shuffleColorsMobileBtn");
+        const centerViewMobileBtn = document.getElementById("centerViewMobileBtn");
+
+        function openDrawer() {
+            settingsDrawer.classList.add("drawer-open");
+            drawerBackdrop.classList.add("active");
+        }
+
+        function closeDrawer() {
+            settingsDrawer.classList.remove("drawer-open");
+            drawerBackdrop.classList.remove("active");
+        }
+
+        mobileMenuBtn.addEventListener("click", openDrawer);
+        drawerBackdrop.addEventListener("click", closeDrawer);
+        drawerCloseBtn.addEventListener("click", closeDrawer);
+
+        // Mobile action bar — delegate to main handlers
+        shuffleLocationMobileBtn.addEventListener("click", () => shuffleLocationBtn.click());
+        shuffleColorsMobileBtn.addEventListener("click", () => shuffleColorsBtn.click());
+        centerViewMobileBtn.addEventListener("click", centerBoardView);
+
+        // Hover/focus preview for legal shuffle cells
+        const shufflePreviewButtons = [shuffleLocationBtn, shuffleLocationMobileBtn];
+        for (const button of shufflePreviewButtons) {
+            button.addEventListener("mouseenter", () => setShufflePreviewActive(true));
+            button.addEventListener("mouseleave", () => setShufflePreviewActive(false));
+            button.addEventListener("focus", () => setShufflePreviewActive(true));
+            button.addEventListener("blur", () => setShufflePreviewActive(false));
+        }
+
+        const initialShuffle = getRandomizedDefaultCardBoard();
+        hexColors = [...initialShuffle.board];
+
         renderGrid();
         renderColorBankEditor();
         updateBackgroundFromInputs();
         updateEmptyBorderStyleFromInputs();
         updateZoomLabel();
-        requestAnimationFrame(centerBoardView);
+        requestAnimationFrame(fitBoardToContent);
+        window.addEventListener("load", () => {
+            requestAnimationFrame(fitBoardToContent);
+        });
+        window.addEventListener("resize", () => {
+            if (shufflePreviewActive) setShufflePreviewActive(true);
+            requestAnimationFrame(fitBoardToContent);
+        });
     </script>
 </body>
 </html>
